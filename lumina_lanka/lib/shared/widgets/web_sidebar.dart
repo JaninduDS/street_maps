@@ -333,11 +333,13 @@ class _WebSidebarState extends State<WebSidebar> {
   }
 
   Widget _buildSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3), 
+        color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.8), 
         borderRadius: BorderRadius.circular(10), 
         border: Border.all(
           color: _searchFocusNode.hasFocus 
@@ -348,16 +350,16 @@ class _WebSidebarState extends State<WebSidebar> {
       ),
       child: Row(
         children: [
-          const Icon(CupertinoIcons.search, color: Colors.white54, size: 18),
+          Icon(CupertinoIcons.search, color: Colors.white54, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
-              style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
-              decoration: const InputDecoration(
+              style: TextStyle(fontFamily: 'GoogleSansFlex', color: isDark ? Colors.white : Colors.black87, fontSize: 13),
+              decoration: InputDecoration(
                 hintText: 'Search',
-                hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 13),
+                hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: isDark ? Colors.white54 : Colors.black54, fontSize: 13),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,

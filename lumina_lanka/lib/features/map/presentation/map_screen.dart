@@ -469,6 +469,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Tooltip(
                             message: "Change the map type",
                             textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             preferBelow: false,
                             verticalOffset: 24,
                             child: MouseRegion(
@@ -501,6 +505,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Tooltip(
                             message: "My Location",
                             textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             preferBelow: false,
                             verticalOffset: 24,
                             child: MouseRegion(
@@ -536,6 +544,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Tooltip(
                             message: "Toggle Theme",
                             textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
                             preferBelow: false,
                             verticalOffset: 24,
                             child: MouseRegion(

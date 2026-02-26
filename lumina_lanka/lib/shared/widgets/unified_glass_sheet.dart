@@ -220,7 +220,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
               // Search Bar (Always Editable Now)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _buildEditableSearchBar(isDark),
+                child: _buildEditableSearchBar(),
               ),
 
               // Search Results (Only visible when expanded/search mode)
@@ -235,7 +235,8 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     );
   }
 
-  Widget _buildEditableSearchBar(bool isDark) {
+  Widget _buildEditableSearchBar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return ClipRRect(
       borderRadius: BorderRadius.circular(100),
       child: BackdropFilter(
@@ -246,7 +247,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
           decoration: BoxDecoration(
             color: isDark 
                 ? const Color(0xFF3A3A3C).withValues(alpha: 0.4) // Elevate 3 Search Bar
-                : const Color(0xFFE5E5EA).withValues(alpha: 0.6), // Light mode search bg
+                : Colors.white.withValues(alpha: 0.8), // Light mode search bg
             borderRadius: BorderRadius.circular(100),
             border: Border.all(
               color: _searchFocusNode.hasFocus 
