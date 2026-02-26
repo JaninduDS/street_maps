@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "550267924161",
+    "project_id": "lumina-lanka-b3b4c",
+    "storage_bucket": "lumina-lanka-b3b4c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:550267924161:android:937b1e71326e5eb4262e40",
+        "android_client_info": {
+          "package_name": "com.maharagama.lumina_lanka"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFImn7B8kTLT944M4Tga6V9m57J6C05x8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

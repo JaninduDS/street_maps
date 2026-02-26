@@ -1,0 +1,113 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{tabularx}
+
+% Color definitions
+\definecolor{primary}{RGB}{0, 70, 140}
+\definecolor{secondary}{RGB}{80, 80, 80}
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    filecolor=magenta,      
+    urlcolor=primary,
+}
+
+% Section formatting
+\titleformat{\section}
+{\normalfont\Large\bfseries\color{primary}}
+{\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\normalfont\large\bfseries\color{primary}}
+{\thesubsection}{1em}{}
+
+% Meta data
+\title{\textbf{Project Progress Report: Lumina Lanka}\\
+\Large Smart Street Light Management System for Maharagama Urban Council}
+\author{\textbf{Prepared for:} Rohan Kariyawasam \\
+\textbf{From:} Janindu de Silva}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Executive Summary}
+Lumina Lanka is a high-fidelity, cross-platform Smart Street Light Management System designed to streamline maintenance reporting and tracking using GPS technology. This solution delivers a seamless native experience across iOS, Android, Web, and Linux platforms. Phase 1 is now complete, establishing the core infrastructure for scalable deployment.
+
+\section{Technical Infrastructure}
+The technical architecture maximizes performance and scalability while minimizing maintenance overhead.
+
+\subsection*{Cloud Infrastructure}
+The system operates on a serverless architecture powered by Google Firebase. This infrastructure manages data storage, authentication, and real-time synchronization through a fully managed cloud environment. This approach ensures high availability and automatic scaling by leveraging Google's global network resources.
+
+\subsection*{Technology Stack}
+\begin{itemize}
+    \item \textbf{Geospatial Rendering:} The Google Maps Platform is utilized for accurate, high-performance geospatial data rendering, which is essential for locating and managing street light infrastructure.
+    \item \textbf{Cross-Platform Framework:} The application is built with Flutter, enabling the compilation of native code for iOS, Android, Web, and Linux from a single codebase.
+\end{itemize}
+
+\section{Completed Progress (Phase 1)}
+The following timeline outlines the key milestones achieved during the first month of development.
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\begin{tabularx}{\textwidth}{@{}c l X@{}}
+\toprule
+\textbf{Week} & \textbf{Focus Area} & \textbf{Key Achievements} \\ \midrule
+1 & Environment Setup & Configured Arch Linux development environment, installed Flutter SDK, Android Studio, and verified Linux Toolchain. \\ 
+2 & Core UI Engineering & Implemented Glassmorphism UI concepts. Developed custom shaders and high-blur backdrops for the application interface. \\ 
+3 & Map Integration & Integrated Google Maps Web API with hardware acceleration. Implemented custom night mode mapping styles for improved visibility. \\ 
+4 & Backend Init & Initialized the Firebase Project. Configured the Firestore Database structure and established secure API connectivity. \\ \bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Upcoming Implementation Roadmap}
+The project will proceed through the following phases to achieve full deployment in the Maharagama region.
+
+\subsection*{Phase 2: Data Digitization}
+\textit{Objective: Populate the system with physical assets.}
+\begin{itemize}
+    \item \textbf{Precise Geotagging:} Implementation of high-accuracy GPS pinning logic.
+    \item \textbf{Asset Classification:} Data entry forms for classifying pole and bulb types.
+    \item \textbf{Volunteer Access:} Deployment of the mapping module for Ward-level data tagging.
+\end{itemize}
+
+\subsection*{Phase 3: Public Reporting and Administration}
+\textit{Objective: Enable citizen engagement and council oversight.}
+\begin{itemize}
+    \item \textbf{Public Interface:} Launching the reporting interface for users to flag faulty street lights.
+    \item \textbf{Council Dashboard:} A web-based analytical view for identifying high-failure zones.
+    \item \textbf{Ward Filtering:} Filtering logic to view issues by specific administrative boundaries.
+\end{itemize}
+
+\subsection*{Phase 4: Maintenance Operations}
+\textit{Objective: Closing the loop on repairs and warranty.}
+\begin{itemize}
+    \item \textbf{Job Cards:} Automated assignment of faulty lights to maintenance staff.
+    \item \textbf{Warranty Tracking:} Data entry of serial numbers during repair to automate stock records.
+    \item \textbf{Resolution:} System logic to update light status upon job completion.
+\end{itemize}
+
+\subsection*{Phase 5: Pilot Deployment}
+\textit{Objective: Live testing in the Maharagama Urban Council area.}
+\begin{itemize}
+    \item Field testing with public security committee volunteers.
+    \item Stress testing the backend with real-time reporting data.
+    \item Final calibration of GPS coordinates for Ward boundaries.
+\end{itemize}
+
+\section{Current Status Summary}
+As of this report, the foundational infrastructure is operational. The application runs successfully on Localhost (Web) and Linux Desktop, featuring active real-time map rendering and a secured database connection.
+
+\end{document}

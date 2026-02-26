@@ -1,0 +1,85 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{xcolor}
+
+% Color definitions
+\definecolor{primary}{RGB}{0, 70, 140}
+
+% Hyperlink setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=primary,
+    filecolor=magenta,      
+    urlcolor=primary,
+}
+
+% Section formatting
+\titleformat{\section}
+{\normalfont\Large\bfseries\color{primary}}
+{\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\normalfont\large\bfseries\color{primary}}
+{\thesubsection}{1em}{}
+
+% Meta data
+\title{\textbf{Project Progress Report: Lumina Lanka}\\
+\Large Smart Street Light Management System for Maharagama Urban Council}
+\author{\textbf{Prepared for:} [Supervisor Name] \\
+\textbf{From:} Lead Developer}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Executive Summary}
+Lumina Lanka is a high-fidelity, cross-platform Smart Street Light Management System designed to streamline maintenance reporting and tracking using GPS technology. This solution delivers a seamless native experience across iOS, Android, Web, and Linux platforms, eliminating the need for complex server hardware. Phase 1 (Infrastructure \& UI) is now complete, establishing a robust foundation for scalable deployment.
+
+\section{Technical Infrastructure}
+The technical architecture of Lumina Lanka has been strategically chosen to minimize overhead while maximizing performance and scalability.
+
+\subsection*{Serverless Architecture}
+We have adopted a \textbf{Serverless Architecture} utilizing \textbf{Google Firebase} as the backend infrastructure. This decision ensures high availability and eliminates the need for maintaining traditional server infrastructure.
+
+\begin{center}
+    \textbf{No physical server hardware is required.}
+\end{center}
+
+\subsection*{Technology Stack}
+\begin{itemize}
+    \item \textbf{Geospatial Rendering:} The system leverages the \textbf{Google Maps Platform} to provide accurate, high-performance geospatial data rendering, essential for locating and managing street light infrastructure.
+    \item \textbf{Cross-Platform Framework:} The application is built with \textbf{Flutter}, enabling us to compile native code for iOS, Android, Web, and Linux from a single codebase. This ensures consistent high performance and a unified user experience across all devices.
+\end{itemize}
+
+\section{Development Timeline: Phase 1}
+The following timeline outlines the key milestones achieved during the first month of development.
+
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{@{}c l p{9cm}@{}}
+\toprule
+\textbf{Week} & \textbf{Focus Area} & \textbf{Key Achievements} \\ \midrule
+1 & Environment Setup & Configured Arch Linux development environment. Installed Flutter SDK, Android Studio, and the Linux Build Toolchain to ensure a robust development workflow. \\ 
+2 & Core UI Engineering & Implemented "Next-Gen" Glassmorphism UI (inspired by iOS 26 concepts). Developed custom shaders and high-blur backdrops to achieve a premium, modern aesthetic. \\ 
+3 & Map Integration & Integrated Google Maps Web API with hardware acceleration enabled. Implemented custom "Night Mode" mapping styles to enhance visibility and reduce eye strain during night operations. \\ 
+4 & Backend Init & Initialized Firebase Project (\texttt{lumina-lanka}). Configured Firestore Database structure and linked API keys to secure connectivity between client and backend. \\ \bottomrule
+\end{tabular}
+\end{table}
+
+\section{Current Status}
+As of this report, Phase 1 is complete. The system's status is as follows:
+\begin{itemize}
+    \item \textbf{Platform Availability:} The application is successfully building and running on \textbf{Localhost (Web)} and \textbf{Linux Desktop}.
+    \item \textbf{Map System:} Real-time map rendering is active and responsive.
+    \item \textbf{Connectivity:} Secure connection to the Google Firestore database has been established and verified.
+\end{itemize}
+
+\end{document}
