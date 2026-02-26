@@ -115,7 +115,7 @@ class _WebSidebarState extends State<WebSidebar> {
 
   @override
   Widget build(BuildContext context) {
-    final width = _isExpanded ? 320.0 : 64.0;
+    final width = _isExpanded ? 210.0 : 64.0;
     
     return Container(
       margin: const EdgeInsets.only(top: 16, bottom: 16, left: 16),
@@ -124,28 +124,37 @@ class _WebSidebarState extends State<WebSidebar> {
         curve: Curves.easeOutCubic,
         width: width,
         height: double.infinity,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.50), // 000000 50%
+              blurRadius: 60, // Shadow - Blur - BG: 60
+              offset: const Offset(0, 0),
+            ),
+          ],
+        ),
         child: GlassmorphicContainer(
           width: width,
           height: double.infinity,
-          borderRadius: 20, 
-          blur: 35,
+          borderRadius: 24, // Global Radius: 6 -> 24 for more curved edges
+          blur: 14, // Frost - Large: 14
           alignment: Alignment.topCenter,
-          border: 1.5,
+          border: 1.0,
           linearGradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            // Dark theme matching the screenshot
+            begin: const Alignment(-1.0, -1.0), // approximating -45 degrees
+            end: const Alignment(1.0, 1.0),
             colors: [
-              const Color(0xFF1E2428).withValues(alpha: 0.90), 
-              const Color(0xFF1a1c23).withValues(alpha: 0.85), 
+              const Color(0xFF262626).withValues(alpha: 0.60), // Liquid Glass Opacity: 60
+              const Color(0xFF262626).withValues(alpha: 0.60), 
             ],
           ),
           borderGradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withValues(alpha: 0.15),
-              Colors.white.withValues(alpha: 0.05),
+              Colors.white.withValues(alpha: 0.20), // 000000 20% (inverted for border)
+              Colors.white.withValues(alpha: 0.11), // 000000 11% (inverted for border)
             ],
           ),
           child: SafeArea( 
@@ -236,12 +245,12 @@ class _WebSidebarState extends State<WebSidebar> {
           decoration: BoxDecoration(
             color: isActive 
               ? Colors.white.withValues(alpha: 0.2) 
-              : Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14), // Squircle
+              : Colors.transparent, // cleaner dark mode buttons
+            borderRadius: BorderRadius.circular(6), // Global Radius: 6
           ),
           child: Icon(
             icon, 
-            color: Colors.white, 
+            color: isActive ? Colors.white : const Color(0xFFF5F5F5).withValues(alpha: 0.67), // F5F5F5 67%
             size: 22,
           ),
         ),
@@ -338,10 +347,10 @@ class _WebSidebarState extends State<WebSidebar> {
             child: TextField(
               controller: _searchController,
               focusNode: _searchFocusNode,
-              style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15),
-              decoration: InputDecoration(
+              style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+              decoration: const InputDecoration(
                 hintText: 'Search',
-                hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 15),
+                hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 13),
                 border: InputBorder.none,
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
@@ -419,12 +428,12 @@ class _WebSidebarState extends State<WebSidebar> {
         HapticFeedback.lightImpact();
         onTap();
       },
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
           color: isSelected ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
           children: [
@@ -441,7 +450,7 @@ class _WebSidebarState extends State<WebSidebar> {
                title,
                style: TextStyle(fontFamily: 'GoogleSansFlex', 
                  color: isSelected ? const Color(0xFF0A84FF) : Colors.white,
-                 fontSize: 15,
+                 fontSize: 13,
                  fontWeight: FontWeight.w500,
                ),
              ),

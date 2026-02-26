@@ -397,78 +397,103 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               opacity: _showReportModal ? 0.0 : 1.0,
               child: Column(
                 children: [
-                  // Map Mode Button
-                  Tooltip(
-                    message: "Change the map type",
-                    textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                  // === MAP & LOCATION PILL ===
+                  Container(
+                    width: 48,
                     decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.50), blurRadius: 30, offset: const Offset(0, 4)),
+                      ],
                     ),
-                    preferBelow: true,
-                    child: MouseRegion( // Ensure hover region works nicely
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          _toggleMapModePopup();
-                        },
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C2C2E), // Dark gray like screenshot
-                            borderRadius: BorderRadius.circular(16), // Squircle
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
-                            ],
-                          ),
-                          child: const Icon(
-                            CupertinoIcons.map_fill,
-                            color: Colors.white,
-                            size: 22,
-                          ),
-                        ),
+                    child: GlassmorphicContainer(
+                      width: 48,
+                      height: 96, // 48 * 2
+                      borderRadius: 16,
+                      blur: 14,
+                      alignment: Alignment.center,
+                      border: 1.0,
+                      linearGradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF262626).withValues(alpha: 0.60),
+                          const Color(0xFF262626).withValues(alpha: 0.60),
+                        ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Location Arrow Button
-                  Tooltip(
-                    message: "My Location",
-                    textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    preferBelow: true,
-                    child: MouseRegion(
-                      cursor: SystemMouseCursors.click,
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.mediumImpact();
-                          _initLocation();
-                          // Reset rotation on location click
-                          if (_mapRotation != 0.0) {
-                            _mapController.rotate(0.0);
-                          }
-                        },
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF2C2C2E), // Dark gray
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
-                            ],
+                      borderGradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.20),
+                          Colors.white.withValues(alpha: 0.11),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Map Mode Button
+                          Tooltip(
+                            message: "Change the map type",
+                            textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            preferBelow: false,
+                            verticalOffset: 24,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  _toggleMapModePopup();
+                                },
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  color: Colors.transparent,
+                                  child: const Icon(
+                                    CupertinoIcons.square_stack_3d_down_right_fill, // Layers icon like iOS
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                          child: const Icon(
-                            CupertinoIcons.location_fill,
-                            color: Colors.white,
-                            size: 22,
+                          // Divider
+                          Container(
+                            height: 1,
+                            width: 32,
+                            color: Colors.white.withValues(alpha: 0.15),
                           ),
-                        ),
+                          // Location Button
+                          Tooltip(
+                            message: "My Location",
+                            textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            preferBelow: false,
+                            verticalOffset: 24,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  _initLocation();
+                                  if (_mapRotation != 0.0) {
+                                    _mapController.rotate(0.0);
+                                  }
+                                },
+                                child: Container(
+                                  width: 48,
+                                  height: 47, // 48 - 1 for divider
+                                  color: Colors.transparent,
+                                  child: Icon(
+                                    CupertinoIcons.location_fill, // More star-like
+                                    color: Colors.white.withValues(alpha: 0.7),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -495,15 +520,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               _mapController.rotate(0.0);
                             },
                             child: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2C2C2E), // Dark gray match
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
-                                ],
-                              ),
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF262626).withValues(alpha: 0.8), // Keep it semi-transparent
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4)),
+                                  ],
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.0),
+                                ),
                               child: Transform.rotate(
                                 angle: -_mapRotation * (pi / 180.0), // Rotate opposite to map to point North
                                 child: Stack(
@@ -553,6 +579,95 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             ),
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  // === ZOOM PILL ===
+                  Container(
+                    width: 48,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.50), blurRadius: 30, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: GlassmorphicContainer(
+                      width: 48,
+                      height: 96, // 48 * 2
+                      borderRadius: 16,
+                      blur: 14,
+                      alignment: Alignment.center,
+                      border: 1.0,
+                      linearGradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(0xFF262626).withValues(alpha: 0.60),
+                          const Color(0xFF262626).withValues(alpha: 0.60),
+                        ],
+                      ),
+                      borderGradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.20),
+                          Colors.white.withValues(alpha: 0.11),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Zoom In
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                final currentZoom = _mapController.camera.zoom;
+                                _mapController.move(_mapController.camera.center, currentZoom + 1);
+                              },
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                color: Colors.transparent,
+                                child: const Icon(
+                                  CupertinoIcons.plus,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Divider
+                          Container(
+                            height: 1,
+                            width: 32,
+                            color: Colors.white.withValues(alpha: 0.15),
+                          ),
+                          // Zoom Out
+                          MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                final currentZoom = _mapController.camera.zoom;
+                                _mapController.move(_mapController.camera.center, currentZoom - 1);
+                              },
+                              child: Container(
+                                width: 48,
+                                height: 47,
+                                color: Colors.transparent,
+                                child: const Icon(
+                                  CupertinoIcons.minus,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
