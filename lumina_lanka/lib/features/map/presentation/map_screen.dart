@@ -6,7 +6,7 @@ library;
 import 'dart:async';
 import 'dart:io'; // Required for Platform check
 import 'package:flutter/foundation.dart'; // Required for kIsWeb check
-import 'dart:ui'; // Required for ImageFilter
+import 'dart:ui' as ui; // Required for ImageFilter and Path
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +14,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -55,11 +56,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Initial Center (Colombo/Maharagama area)
   static const LatLng _initialCenter = LatLng(6.9271, 79.8612);
 
-  // Map Mode State - CartoDB Positron Light
-  String _currentTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
-  String _currentMapMode = 'Explore'; // Explore, Driving, Transit, Satellite
-  List<String> _currentSubdomains = ['a', 'b', 'c', 'd'];
-  bool _isMapModeOpen = false; // Track if Map Modes sheet is open
+  // Map Mode State
+  String _currentTileUrl = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+  String _currentMapMode = 'Standard'; // Standard, Hybrid, Satellite
+  List<String> _currentSubdomains = [];
+  bool _isMapModeOpen = false; // Track if Map Modes popup is open
+  double _mapRotation = 0.0; // Track map rotation for compass
   
   // Report Panel State
   bool _isReportPanelOpen = false;
@@ -177,202 +179,73 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  /// Show Map Modes Bottom Sheet
-  void _showMapModeSheet() {
-    setState(() => _isMapModeOpen = true); // Hide search bar
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        // Unified "Liquid Glass" Styling
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 20), // Floating margins
-          child: GlassmorphicContainer(
-            width: double.infinity,
-            height: 290, // Reduced height for tighter layout
-            borderRadius: 20, // Match UnifiedGlassSheet
-            blur: 5,         // Match UnifiedGlassSheet
-            alignment: Alignment.center,
-            border: 1.5,     // Match UnifiedGlassSheet
-            linearGradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF202020).withValues(alpha: 0.15),
-                const Color(0xFF101010).withValues(alpha: 0.15),
-              ],
-            ),
-            borderGradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.15),
-                Colors.white.withValues(alpha: 0.05),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Drag Handle
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 10),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-
-                // Header (Centered Title + Close Button)
-                SizedBox(
-                  height: 48, // Slightly taller for better touch targets
-                  width: double.infinity, // Force full width for Stack positioning
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Title
-                      Text(
-                        'Map Modes',
-                        style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      // Close Button (Top Right)
-                      Positioned(
-                        right: 16, // Align to right edge with padding
-                        child: GestureDetector(
-                          onTap: () => Navigator.pop(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.close, color: Colors.white70, size: 20),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // Grid Options (Using Assets)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildModeItem('Explore', 'assets/icons/explore.png'),
-                      const SizedBox(width: 20),
-                      _buildModeItem('Driving', 'assets/icons/driving.png'),
-                      const SizedBox(width: 20),
-                      _buildModeItem('Transit', 'assets/icons/transit.png'),
-                      const SizedBox(width: 20),
-                      _buildModeItem('Satellite', 'assets/icons/satellite.png'),
-                    ],
-                  ),
-                ),
-                
-                const SizedBox(height: 25), // Fixed spacing instead of Expanded
-
-                // Footer attribution
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 20),
-                  child: Text(
-                    '© OpenStreetMap and other data providers',
-                    style: TextStyle(color: Colors.white24, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    ).whenComplete(() {
-      // Re-show search bar when sheet closes
-      if (mounted) setState(() => _isMapModeOpen = false);
-    });
+  /// Toggle Map Modes Popup
+  void _toggleMapModePopup() {
+    setState(() => _isMapModeOpen = !_isMapModeOpen);
   }
 
   Widget _buildModeItem(String title, String imagePath) {
     final isSelected = _currentMapMode == title;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        setState(() {
-          _currentMapMode = title;
-          if (title == 'Explore') {
-            // CartoDB Positron
-            _currentTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
-            _currentSubdomains = ['a', 'b', 'c', 'd'];
-          } else if (title == 'Driving') {
-            // CartoDB Voyager
-            _currentTileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-            _currentSubdomains = ['a', 'b', 'c', 'd'];
-          } else if (title == 'Transit') {
-            // CartoDB Positron Labels
-            _currentTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
-            _currentSubdomains = ['a', 'b', 'c', 'd'];
-          } else if (title == 'Satellite') {
-            // Google Maps Satellite 
-            _currentTileUrl = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
-            _currentSubdomains = [];
-          }
-        });
-        Navigator.pop(context);
-      },
-      child: Column(
-        children: [
-          // Image Container
-          Container(
-            width: 75,
-            height: 75,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: isSelected ? Border.all(color: const Color(0xFF008FFF), width: 3) : Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              image: DecorationImage(
-                 image: AssetImage(imagePath),
-                 fit: BoxFit.cover,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() {
+            _currentMapMode = title;
+            if (title == 'Standard') {
+              _currentTileUrl = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+              _currentSubdomains = [];
+            } else if (title == 'Hybrid') {
+              // Satellite + Labels/Roads
+              _currentTileUrl = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+              _currentSubdomains = [];
+            } else if (title == 'Satellite') {
+              // Pure Satellite Image
+              _currentTileUrl = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+              _currentSubdomains = [];
+            }
+          });
+          // Auto close after selection on mobile? Or keep open? Let's keep it simple.
+        },
+        child: Column(
+          children: [
+            // Image Container
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16), // Match squircle
+                border: isSelected 
+                  ? Border.all(color: const Color(0xFF007BFF), width: 2.5) // Blue border
+                  : Border.all(color: Colors.transparent, width: 2.5),
+                image: DecorationImage(
+                   image: AssetImage(imagePath),
+                   fit: BoxFit.cover,
                 ),
-              ],
-            ),
-            // Checkmark overlay if selected
-            child: isSelected 
-              ? const Align(
-                  alignment: Alignment.topRight, 
-                  child: Padding(
-                    padding: EdgeInsets.all(4.0),
-                    child: Icon(Icons.check_circle, color: Color(0xFF008FFF), size: 20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                ) 
-              : null,
-          ),
-          const SizedBox(height: 10),
-          
-          // Text
-          Text(
-            title,
-            style: TextStyle(fontFamily: 'GoogleSansFlex', 
-              color: isSelected ? const Color(0xFF008FFF) : Colors.white70,
-              fontSize: 13,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ],
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            
+            // Text Below
+            Text(
+              title,
+              style: TextStyle(fontFamily: 'GoogleSansFlex', 
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -441,9 +314,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
               onPositionChanged: (position, hasGesture) {
                 _currentMapCenter = position.center;
+                if (position.rotation != _mapRotation) {
+                  setState(() => _mapRotation = position.rotation);
+                }
               },
               interactionOptions: const InteractionOptions(
-                 flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+                 flags: InteractiveFlag.all,
               ),
             ),
             children: [
@@ -466,85 +342,224 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           if (_showReportModal)
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                 child: Container(
                   color: Colors.black.withValues(alpha: 0.1), // Slight dim
                 ),
               ),
             ),
               
-          // === FLOATING ACTION PILL (Right Side) ===
-          // Hide when Map Mode is open too
+          // === MAP MODE POPUP MENU ===
+          if (_isMapModeOpen)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              right: 80, // Offset to the left of the buttons
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _showReportModal ? 0.0 : 1.0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1C1C1E), // Dark iOS style surface
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min, // Hug contents
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildModeItem('Standard', 'assets/icons/explore.png'),
+                      const SizedBox(width: 16),
+                      _buildModeItem('Hybrid', 'assets/icons/transit.png'),
+                      const SizedBox(width: 16),
+                      _buildModeItem('Satellite', 'assets/icons/satellite.png'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+              
+          // === FLOATING ACTION BUTTONS (Right Side) ===
           AnimatedPositioned(
             duration: const Duration(milliseconds: 200),
             top: MediaQuery.of(context).padding.top + 16,
-            right: _isMapModeOpen ? -70 : 16, // Slide out if map mode open
+            right: 16,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
               opacity: _showReportModal ? 0.0 : 1.0,
-              child: GlassmorphicContainer(
-              width: 54, // Pill width
-              height: 120, // Height for 2 buttons
-              borderRadius: 27, // Fully rounded pill
-              blur: 5,
-              alignment: Alignment.center,
-              border: 1.5,
-              linearGradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.white.withValues(alpha: 0.9),
-                  Colors.white.withValues(alpha: 0.8),
-                ],
-              ),
-              borderGradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.black.withValues(alpha: 0.1),
-                  Colors.black.withValues(alpha: 0.05),
-                ],
-              ),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // Map Mode Button
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.mediumImpact();
-                      _showMapModeSheet();
-                    },
-                    child: const Icon(
-                      CupertinoIcons.map_fill, // Folded map icon
+                  Tooltip(
+                    message: "Change the map type",
+                    textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                    decoration: BoxDecoration(
                       color: Colors.black87,
-                      size: 26,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    preferBelow: true,
+                    child: MouseRegion( // Ensure hover region works nicely
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          _toggleMapModePopup();
+                        },
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2E), // Dark gray like screenshot
+                            borderRadius: BorderRadius.circular(16), // Squircle
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
+                            ],
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.map_fill,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  
-                  // Divider
-                  Container(
-                    width: 30,
-                    height: 1,
-                    color: Colors.black.withValues(alpha: 0.1),
-                  ),
-
-                  // Location Arrow
-                  GestureDetector(
-                    onTap: () {
-                      HapticFeedback.mediumImpact();
-                      _initLocation();
-                    },
-                    child: const Icon(
-                      CupertinoIcons.location_fill,
+                  const SizedBox(height: 12),
+                  // Location Arrow Button
+                  Tooltip(
+                    message: "My Location",
+                    textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                    decoration: BoxDecoration(
                       color: Colors.black87,
-                      size: 26,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    preferBelow: true,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          _initLocation();
+                          // Reset rotation on location click
+                          if (_mapRotation != 0.0) {
+                            _mapController.rotate(0.0);
+                          }
+                        },
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2C2C2E), // Dark gray
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
+                            ],
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.location_fill,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Responsive Compass Button
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: 1.0, // Always visible
+                    child: IgnorePointer(
+                      ignoring: false,
+                      child: Tooltip(
+                        message: "Reset North",
+                        textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                        decoration: BoxDecoration(
+                          color: Colors.black87,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        preferBelow: true,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.mediumImpact();
+                              _mapController.rotate(0.0);
+                            },
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C2C2E), // Dark gray match
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 4)),
+                                ],
+                              ),
+                              child: Transform.rotate(
+                                angle: -_mapRotation * (pi / 180.0), // Rotate opposite to map to point North
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    // Static Tick Marks
+                                    for (int i = 0; i < 12; i++)
+                                      Transform.rotate(
+                                        angle: (i * 30.0) * (pi / 180.0),
+                                        child: Align(
+                                          alignment: Alignment.topCenter,
+                                          child: Container(
+                                            margin: const EdgeInsets.only(top: 4),
+                                            width: i % 3 == 0 ? 3 : 2,
+                                            height: i % 3 == 0 ? 6 : 4,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: i == 0 ? 0.0 : 0.4), // Hide top tick for arrow
+                                              borderRadius: BorderRadius.circular(1),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    // Red North Triangle
+                                    Align(
+                                      alignment: Alignment.topCenter,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(top: 4.0),
+                                        child: CustomPaint(
+                                          size: const Size(8, 6),
+                                          painter: TrianglePainter(color: const Color(0xFFE53935)),
+                                        ),
+                                      ),
+                                    ),
+                                    // 'N' Text
+                                    const Text(
+                                      'N',
+                                      style: TextStyle(
+                                        fontFamily: 'GoogleSansFlex',
+                                        color: Colors.white70,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
         
           
           // === REPORT BUTTON (Bottom Left/Center) - Mobile Only ===
@@ -883,4 +898,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 }
+
+/// Custom painter for the red North triangle in the compass
+class TrianglePainter extends CustomPainter {
+  final Color color;
+
+  TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    var paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    var path = ui.Path();
+    path.moveTo(size.width / 2, 0); // Top center
+    path.lineTo(size.width, size.height); // Bottom right
+    path.lineTo(0, size.height); // Bottom left
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
+}
+
 

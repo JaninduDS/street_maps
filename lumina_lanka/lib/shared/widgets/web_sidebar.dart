@@ -258,11 +258,13 @@ class _WebSidebarState extends State<WebSidebar> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Brand Header with Toggle
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 24, 16, 24),
-              child: Row(
-                children: [
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  children: [
                   GestureDetector(
                     onTap: _toggleExpand,
                     child: Container(
@@ -289,6 +291,7 @@ class _WebSidebarState extends State<WebSidebar> {
                 ],
               ),
             ),
+          ),
 
             // Search Box
             Padding(
