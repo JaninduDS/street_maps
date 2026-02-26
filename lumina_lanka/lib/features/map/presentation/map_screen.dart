@@ -24,6 +24,7 @@ import '../../../shared/widgets/unified_glass_sheet.dart';
 import '../../report/presentation/report_side_panel.dart';
 import '../../report/presentation/report_issue_dialog.dart';
 import '../../../shared/widgets/web_sidebar.dart';
+import '../../../core/theme/theme_provider.dart'; // Added theme provider import
 
 /// Main map screen with OpenStreetMap and Unified Bottom Sheet
 class MapScreen extends ConsumerStatefulWidget {
@@ -207,7 +208,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               _currentSubdomains = [];
             }
           });
-          // Auto close after selection on mobile? Or keep open? Let's keep it simple.
         },
         child: Column(
           children: [
@@ -239,7 +239,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             Text(
               title,
               style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                color: Colors.white,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
                 fontSize: 13,
                 fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
               ),
@@ -295,9 +295,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   Widget build(BuildContext context) {
     // Check if in "Mark Pole" mode (Index 1)
     final isMarkingPole = _selectedActionIndex == 1;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9), // Match light map background
+      backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9F9),
       body: Stack(
         children: [
           FlutterMap(
@@ -323,14 +324,30 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
             children: [
-              // Dynamic Tile Layer - Clean OSM Bright style
+              // Dynamic Tile Layer - Clean OSM Bright style with Dark Reader filter
               TileLayer(
                 urlTemplate: _currentTileUrl,
                 userAgentPackageName: 'com.maharagama.lumina_lanka',
                 subdomains: _currentSubdomains,
-                // Disable retina mode to prevent tiny text on high-DPI screens
                 retinaMode: false,
-                tileSize: 256, // Ensure standard tile sizing
+                tileSize: 256,
+                tileBuilder: (context, widget, tile) {
+                  // Only apply the Dark Reader filter if in Dark Mode AND using the Standard map
+                  if (isDark && _currentMapMode == 'Standard') {
+                    return ColorFiltered(
+                      // This specific matrix inverts colors AND rotates hue by 180deg
+                      // It turns white roads black, blue water dark blue, and green parks dark green
+                      colorFilter: const ColorFilter.matrix([
+                         0.333, -0.667, -0.667, 0, 255,
+                        -0.667,  0.333, -0.667, 0, 255,
+                        -0.667, -0.667,  0.333, 0, 255,
+                         0,      0,      0,     1, 0,
+                      ]),
+                      child: widget,
+                    );
+                  }
+                  return widget;
+                },
               ),
               
               // Markers Layer
@@ -360,12 +377,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1C1C1E), // Dark iOS style surface
+                    color: isDark ? const Color(0xFF1C1C1E) : Colors.white, // Dark iOS style surface
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.5),
+                        color: Colors.black.withValues(alpha: 0.2),
                         blurRadius: 20,
                         spreadRadius: 2,
                         offset: const Offset(0, 8),
@@ -397,18 +414,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               opacity: _showReportModal ? 0.0 : 1.0,
               child: Column(
                 children: [
-                  // === MAP & LOCATION PILL ===
+                  // === MAP, LOCATION & THEME PILL ===
                   Container(
                     width: 48,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.50), blurRadius: 30, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 30, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: GlassmorphicContainer(
                       width: 48,
-                      height: 96, // 48 * 2
+                      height: 144, // Increased to fit 3 buttons
                       borderRadius: 16,
                       blur: 14,
                       alignment: Alignment.center,
@@ -416,18 +433,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       linearGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF262626).withValues(alpha: 0.60),
-                          const Color(0xFF262626).withValues(alpha: 0.60),
-                        ],
+                        colors: isDark 
+                          ? [
+                              const Color(0xFF262626).withValues(alpha: 0.60),
+                              const Color(0xFF262626).withValues(alpha: 0.60),
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: 0.85),
+                              Colors.white.withValues(alpha: 0.75),
+                            ],
                       ),
                       borderGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.20),
-                          Colors.white.withValues(alpha: 0.11),
-                        ],
+                        colors: isDark
+                          ? [
+                              Colors.white.withValues(alpha: 0.20),
+                              Colors.white.withValues(alpha: 0.11),
+                            ]
+                          : [
+                              Colors.black.withValues(alpha: 0.15),
+                              Colors.black.withValues(alpha: 0.05),
+                            ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -447,11 +474,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 },
                                 child: Container(
                                   width: 48,
-                                  height: 48,
+                                  height: 47,
                                   color: Colors.transparent,
-                                  child: const Icon(
+                                  child: Icon(
                                     CupertinoIcons.square_stack_3d_down_right_fill, // Layers icon like iOS
-                                    color: Colors.white,
+                                    color: isDark ? Colors.white : Colors.black87,
                                     size: 20,
                                   ),
                                 ),
@@ -462,7 +489,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Container(
                             height: 1,
                             width: 32,
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
                           ),
                           // Location Button
                           Tooltip(
@@ -482,11 +509,44 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 },
                                 child: Container(
                                   width: 48,
-                                  height: 47, // 48 - 1 for divider
+                                  height: 47,
                                   color: Colors.transparent,
                                   child: Icon(
                                     CupertinoIcons.location_fill, // More star-like
-                                    color: Colors.white.withValues(alpha: 0.7),
+                                    color: isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black87.withValues(alpha: 0.7),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Divider 2
+                          Container(
+                            height: 1,
+                            width: 32,
+                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                          ),
+                          // Theme Toggle Button
+                          Tooltip(
+                            message: "Toggle Theme",
+                            textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            preferBelow: false,
+                            verticalOffset: 24,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  ref.read(themeModeProvider.notifier).state = 
+                                      isDark ? ThemeMode.light : ThemeMode.dark;
+                                },
+                                child: Container(
+                                  width: 48,
+                                  height: 47,
+                                  color: Colors.transparent,
+                                  child: Icon(
+                                    isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
+                                    color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87.withValues(alpha: 0.9),
                                     size: 20,
                                   ),
                                 ),
@@ -523,12 +583,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF262626).withValues(alpha: 0.8), // Keep it semi-transparent
+                                  color: isDark ? const Color(0xFF262626).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                                   shape: BoxShape.circle,
                                   boxShadow: [
-                                    BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 16, offset: const Offset(0, 4)),
+                                    BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 4)),
                                   ],
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1.0),
+                                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1), width: 1.0),
                                 ),
                               child: Transform.rotate(
                                 angle: -_mapRotation * (pi / 180.0), // Rotate opposite to map to point North
@@ -546,7 +606,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             width: i % 3 == 0 ? 3 : 2,
                                             height: i % 3 == 0 ? 6 : 4,
                                             decoration: BoxDecoration(
-                                              color: Colors.white.withValues(alpha: i == 0 ? 0.0 : 0.4), // Hide top tick for arrow
+                                              color: (isDark ? Colors.white : Colors.black).withValues(alpha: i == 0 ? 0.0 : 0.4), // Hide top tick for arrow
                                               borderRadius: BorderRadius.circular(1),
                                             ),
                                           ),
@@ -564,11 +624,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       ),
                                     ),
                                     // 'N' Text
-                                    const Text(
+                                    Text(
                                       'N',
                                       style: TextStyle(
                                         fontFamily: 'GoogleSansFlex',
-                                        color: Colors.white70,
+                                        color: isDark ? Colors.white70 : Colors.black87,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -590,7 +650,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.50), blurRadius: 30, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.20), blurRadius: 30, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: GlassmorphicContainer(
@@ -603,18 +663,28 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       linearGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF262626).withValues(alpha: 0.60),
-                          const Color(0xFF262626).withValues(alpha: 0.60),
-                        ],
+                        colors: isDark 
+                          ? [
+                              const Color(0xFF262626).withValues(alpha: 0.60),
+                              const Color(0xFF262626).withValues(alpha: 0.60),
+                            ]
+                          : [
+                              Colors.white.withValues(alpha: 0.85),
+                              Colors.white.withValues(alpha: 0.75),
+                            ],
                       ),
                       borderGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.20),
-                          Colors.white.withValues(alpha: 0.11),
-                        ],
+                        colors: isDark
+                          ? [
+                              Colors.white.withValues(alpha: 0.20),
+                              Colors.white.withValues(alpha: 0.11),
+                            ]
+                          : [
+                              Colors.black.withValues(alpha: 0.15),
+                              Colors.black.withValues(alpha: 0.05),
+                            ],
                       ),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -632,9 +702,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 width: 48,
                                 height: 48,
                                 color: Colors.transparent,
-                                child: const Icon(
+                                child: Icon(
                                   CupertinoIcons.plus,
-                                  color: Colors.white,
+                                  color: isDark ? Colors.white : Colors.black87,
                                   size: 20,
                                 ),
                               ),
@@ -644,7 +714,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Container(
                             height: 1,
                             width: 32,
-                            color: Colors.white.withValues(alpha: 0.15),
+                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
                           ),
                           // Zoom Out
                           MouseRegion(
@@ -659,9 +729,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 width: 48,
                                 height: 47,
                                 color: Colors.transparent,
-                                child: const Icon(
+                                child: Icon(
                                   CupertinoIcons.minus,
-                                  color: Colors.white,
+                                  color: isDark ? Colors.white : Colors.black87,
                                   size: 20,
                                 ),
                               ),
@@ -891,7 +961,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               opacity: _isSearchActive ? 0.0 : 1.0,
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 16),
-                                child: _buildActionButtons(),
+                                child: _buildActionButtons(isDark),
                               ),
                             ),
                           ),
@@ -964,7 +1034,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
   }
-  Widget _buildActionButtons() {
+  Widget _buildActionButtons(bool isDark) {
     final actions = [
       ('Public User', CupertinoIcons.person_2_fill),
       ('Council', CupertinoIcons.building_2_fill),
@@ -987,8 +1057,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5), // Lighter black to match widget
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8), 
+                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
                   borderRadius: BorderRadius.circular(100), // Pill shape
                 ),
                 child: Row(
@@ -998,7 +1068,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     Text(
                       action.$1,
                       style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                        color: Colors.white.withValues(alpha: 0.9), // Slightly brighter text
+                        color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),

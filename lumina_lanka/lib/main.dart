@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart'; // Required for kIsWeb check
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/map/presentation/map_screen.dart';
+import 'core/theme/theme_provider.dart';
+import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,31 +29,20 @@ void main() async {
   runApp(const ProviderScope(child: MyApp()));
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'Lumina Lanka',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        platform: TargetPlatform.iOS, // Force Apple Design behaviors globally
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0A84FF), // iOS System Blue
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-        // Apply Inter font globally
-        textTheme: Theme.of(context).textTheme.apply(
-          fontFamily: 'GoogleSansFlex',
-          bodyColor: Colors.white,
-          displayColor: Colors.white,
-        ),
-      ),
+      themeMode: themeMode,               // 1. Listens to the toggle
+      theme: AppTheme.lightTheme,         // 2. Uses the new light theme
+      darkTheme: AppTheme.darkTheme,      // 3. Uses your existing dark theme
       builder: (context, child) {
-        // Enforce smooth iOS-like bouncing scrolling everywhere
         return ScrollConfiguration(
           behavior: const MaterialScrollBehavior().copyWith(
             physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -59,7 +50,7 @@ class MyApp extends StatelessWidget {
           child: child!,
         );
       },
-      home: const MapScreen(), // Ensure you have imported map_screen.dart
+      home: const MapScreen(),
     );
   }
 }

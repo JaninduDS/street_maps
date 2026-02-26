@@ -12,8 +12,8 @@ import 'dart:ui';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:http/http.dart' as http;
 
-/// Unified Glass Sheet - Dark frosted "Floating Island" bottom panel
-/// Now with integrated search functionality
+/// Unified Glass Sheet - Frosted "Floating Island" bottom panel
+/// Now with integrated search functionality and Light/Dark mode support
 class UnifiedGlassSheet extends StatefulWidget {
   final int? selectedActionIndex;
   final ValueChanged<int>? onActionSelected;
@@ -58,7 +58,6 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
 
   void _onFocusChange() {
     widget.onFocusChange?.call(_searchFocusNode.hasFocus);
-    // Removed auto-resize on focus logic
   }
 
   @override
@@ -69,8 +68,6 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     _searchFocusNode.dispose();
     super.dispose();
   }
-
-  // ... (skip lines) ...
 
   void _onSearchSubmitted(String query) {
     if (query.trim().isEmpty) return;
@@ -147,6 +144,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
     final maxHeight = screenHeight * 0.7; // Dynamic max height
@@ -191,18 +189,28 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
           linearGradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF1C1C1E).withValues(alpha: 0.65), // iOS System Elevated Background
-              const Color(0xFF1C1C1E).withValues(alpha: 0.55),
-            ],
+            colors: isDark 
+              ? [
+                  const Color(0xFF1C1C1E).withValues(alpha: 0.65), // iOS System Elevated Background
+                  const Color(0xFF1C1C1E).withValues(alpha: 0.55),
+                ]
+              : [
+                  Colors.white.withValues(alpha: 0.85), // Light mode glass
+                  Colors.white.withValues(alpha: 0.75),
+                ],
           ),
           borderGradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withValues(alpha: 0.15),
-              Colors.white.withValues(alpha: 0.05),
-            ],
+            colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: 0.15),
+                  Colors.white.withValues(alpha: 0.05),
+                ]
+              : [
+                  Colors.black.withValues(alpha: 0.15),
+                  Colors.black.withValues(alpha: 0.05),
+                ],
           ),
           child: Column(
             children: [
@@ -212,13 +220,13 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
               // Search Bar (Always Editable Now)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: _buildEditableSearchBar(),
+                child: _buildEditableSearchBar(isDark),
               ),
 
               // Search Results (Only visible when expanded/search mode)
               if (_currentHeight > _minHeight + 20)
                 Expanded(
-                  child: _buildSearchResults(),
+                  child: _buildSearchResults(isDark),
                 ),
             ],
           ),
@@ -227,9 +235,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     );
   }
 
-  // Removed _buildTappableSearchBar as requested - always editable now
-
-  Widget _buildEditableSearchBar() {
+  Widget _buildEditableSearchBar(bool isDark) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(100),
       child: BackdropFilter(
@@ -238,12 +244,14 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
           height: 44, // Reduced height (was 52)
           padding: const EdgeInsets.only(left: 16, right: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFF3A3A3C).withValues(alpha: 0.4), // Elevate 3 Search Bar
+            color: isDark 
+                ? const Color(0xFF3A3A3C).withValues(alpha: 0.4) // Elevate 3 Search Bar
+                : const Color(0xFFE5E5EA).withValues(alpha: 0.6), // Light mode search bg
             borderRadius: BorderRadius.circular(100),
             border: Border.all(
               color: _searchFocusNode.hasFocus 
                   ? const Color(0xFF0A84FF).withValues(alpha: 0.8) // iOS Blue
-                  : Colors.white.withValues(alpha: 0.1),
+                  : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
               width: _searchFocusNode.hasFocus ? 1.5 : 0.5,
             ),
           ),
@@ -255,11 +263,18 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
                   child: TextField(
                     controller: _searchController,
                     focusNode: _searchFocusNode,
-                    style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15), // Slightly smaller text
+                    style: TextStyle(
+                      fontFamily: 'GoogleSansFlex', 
+                      color: isDark ? Colors.white : Colors.black87, 
+                      fontSize: 15
+                    ), // Slightly smaller text
                     textInputAction: TextInputAction.search, // Show 'Search' button on keyboard
                     decoration: InputDecoration(
                       hintText: 'Search Maps',
-                      hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white38),
+                      hintStyle: TextStyle(
+                        fontFamily: 'GoogleSansFlex', 
+                        color: isDark ? Colors.white38 : Colors.black38
+                      ),
                       border: InputBorder.none,
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
@@ -286,10 +301,14 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(CupertinoIcons.xmark, color: Colors.white54, size: 14),
+                      child: Icon(
+                        CupertinoIcons.xmark, 
+                        color: isDark ? Colors.white54 : Colors.black54, 
+                        size: 14
+                      ),
                     ),
                   ),
               ],
@@ -299,7 +318,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
       );
   }
 
-  Widget _buildSearchResults() {
+  Widget _buildSearchResults(bool isDark) {
     if (_isSearching) {
       return const Center(
         child: Padding(
@@ -315,7 +334,11 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
           padding: const EdgeInsets.all(20),
           child: Text(
             'No results found',
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white38, fontSize: 14),
+            style: TextStyle(
+              fontFamily: 'GoogleSansFlex', 
+              color: isDark ? Colors.white38 : Colors.black38, 
+              fontSize: 14
+            ),
           ),
         ),
       );
@@ -330,7 +353,11 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
           leading: const Icon(CupertinoIcons.location_solid, color: Color(0xFF0A84FF), size: 22), // iOS Blue Marker
           title: Text(
             result['display_name'],
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 14),
+            style: TextStyle(
+              fontFamily: 'GoogleSansFlex', 
+              color: isDark ? Colors.white : Colors.black87, 
+              fontSize: 14
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
