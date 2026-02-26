@@ -158,7 +158,14 @@ class _WebSidebarState extends State<WebSidebar> {
             ],
           ),
           child: SafeArea( 
-            child: _isExpanded ? _buildExpandedContent() : _buildCollapsedContent(),
+            child: ClipRect(
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                minWidth: _isExpanded ? 210.0 : 64.0,
+                maxWidth: _isExpanded ? 210.0 : 64.0,
+                child: _isExpanded ? _buildExpandedContent() : _buildCollapsedContent(),
+              ),
+            ),
           ),
         ),
       ),
