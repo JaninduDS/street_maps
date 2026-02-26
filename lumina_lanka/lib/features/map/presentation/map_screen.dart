@@ -25,6 +25,7 @@ import '../../report/presentation/report_side_panel.dart';
 import '../../report/presentation/report_issue_dialog.dart';
 import '../../../shared/widgets/web_sidebar.dart';
 import '../../../core/theme/theme_provider.dart'; // Added theme provider import
+import 'widgets/street_view_widget.dart';
 
 /// Main map screen with OpenStreetMap and Unified Bottom Sheet
 class MapScreen extends ConsumerStatefulWidget {
@@ -73,6 +74,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Report State
   bool _showReportModal = false; // New modal state
+
+  // Street View State (Web Only)
+  bool _showStreetView = false;
+  // TODO: Securely fetch this in production. Using from google-services for demo.
+  final String _googleApiKey = const String.fromEnvironment('MAPS_API_KEY', defaultValue: 'AIzaSyDFImn7B8kTLT944M4Tga6V9m57J6C05x8');
 
   @override
   void initState() {
@@ -741,11 +747,97 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  // === STREET VIEW BUTTON (Web Only) ===
+                  if (kIsWeb)
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: _showStreetView ? 0.0 : 1.0, // Hide when Street View is active
+                      child: IgnorePointer(
+                        ignoring: _showStreetView,
+                        child: Tooltip(
+                          message: "Street View",
+                          textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                          decoration: BoxDecoration(
+                            color: Colors.black87,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          preferBelow: true,
+                          child: MouseRegion(
+                            cursor: SystemMouseCursors.click,
+                            child: GestureDetector(
+                              onTap: () {
+                                HapticFeedback.mediumImpact();
+                                setState(() => _showStreetView = true);
+                              },
+                              child: GlassmorphicContainer(
+                                width: 48,
+                                height: 48,
+                                borderRadius: 16,
+                                blur: 14,
+                                alignment: Alignment.center,
+                                border: 1.0,
+                                linearGradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isDark 
+                                    ? [
+                                        const Color(0xFF262626).withValues(alpha: 0.60),
+                                        const Color(0xFF262626).withValues(alpha: 0.60),
+                                      ]
+                                    : [
+                                        Colors.white.withValues(alpha: 0.85),
+                                        Colors.white.withValues(alpha: 0.75),
+                                      ],
+                                ),
+                                borderGradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isDark
+                                    ? [
+                                        Colors.white.withValues(alpha: 0.20),
+                                        Colors.white.withValues(alpha: 0.11),
+                                      ]
+                                    : [
+                                        Colors.black.withValues(alpha: 0.15),
+                                        Colors.black.withValues(alpha: 0.05),
+                                      ],
+                                ),
+                                child: Icon(
+                                  CupertinoIcons.binoculars_fill,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
         
+          // === STREET VIEW OVERLAY (Web Only) ===
+          if (kIsWeb && _showStreetView)
+            Positioned(
+              left: 24, // Consistent padding from the left edge
+              top: MediaQuery.of(context).padding.top + 80, // Allow space below the map type pill
+              child: StreetViewWidget(
+                latitude: _currentMapCenter?.latitude ?? _initialCenter.latitude,
+                longitude: _currentMapCenter?.longitude ?? _initialCenter.longitude,
+                apiKey: _googleApiKey,
+                onExpand: () {
+                  // The widget handles size changes internally, 
+                  // but we trigger a rebuild here if the parent needs any adjustments layout-wise.
+                  setState(() {});
+                },
+                onDone: () {
+                  setState(() => _showStreetView = false);
+                },
+              ),
+            ),
           
           // === REPORT BUTTON (Bottom Left/Center) - Mobile Only ===
           if (MediaQuery.of(context).size.width < 768)
