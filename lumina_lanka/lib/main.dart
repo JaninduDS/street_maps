@@ -4,10 +4,17 @@ import 'firebase_options.dart';
 import 'dart:io'; // Required for Platform check
 import 'package:flutter/foundation.dart'; // Required for kIsWeb check
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'features/map/presentation/map_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: 'https://gnwhjfxtmgqofhpujlem.supabase.co/',
+    anonKey: 'sb_publishable_00aBOF1uF__Kod3xjZkGxQ_osPncgTn',
+  );
 
   // 🛑 FIX: Only initialize Firebase on supported platforms (Web, Android, iOS)
   // This prevents the crash on Linux/Windows
