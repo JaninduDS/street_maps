@@ -12,7 +12,7 @@ class WebSidebar extends StatefulWidget {
   final ValueChanged<int>? onActionSelected;
   final void Function(double lat, double lng, String displayName)? onLocationSelected;
   final VoidCallback onReportTapped;
-  final ValueChanged<bool>? onExpandedChanged;
+  final VoidCallback? onSearchTapped;
   
   const WebSidebar({
     super.key,
@@ -20,7 +20,7 @@ class WebSidebar extends StatefulWidget {
     this.onActionSelected,
     this.onLocationSelected,
     required this.onReportTapped,
-    this.onExpandedChanged,
+    this.onSearchTapped,
   });
 
   @override
@@ -28,98 +28,19 @@ class WebSidebar extends StatefulWidget {
 }
 
 class _WebSidebarState extends State<WebSidebar> {
-  final TextEditingController _searchController = TextEditingController();
-  final FocusNode _searchFocusNode = FocusNode();
-  List<Map<String, dynamic>> _searchResults = [];
-  bool _isSearching = false;
-  Timer? _debounce;
-  bool _isSearchActive = false;
-  
-  bool _isExpanded = false; // Add collapsed/expanded state
-
   @override
   void initState() {
     super.initState();
-    _searchFocusNode.addListener(() {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
   void dispose() {
-    _searchFocusNode.dispose();
-    _searchController.dispose();
-    _debounce?.cancel();
     super.dispose();
-  }
-
-  void _toggleExpand() {
-    setState(() {
-      _isExpanded = !_isExpanded;
-      if (!_isExpanded) {
-        _searchFocusNode.unfocus();
-      }
-    });
-    widget.onExpandedChanged?.call(_isExpanded);
-  }
-
-  void _onSearchSubmitted(String query) {
-    if (query.trim().isEmpty) return;
-    setState(() => _isSearchActive = true);
-    _searchFocusNode.unfocus();
-    _searchAddress(query);
-  }
-
-  void _clearSearch() {
-    _debounce?.cancel();
-    setState(() {
-      _isSearchActive = false;
-      _searchResults = [];
-      _searchController.clear();
-    });
-    _searchFocusNode.unfocus();
-  }
-
-  Future<void> _searchAddress(String query, {bool isAutoSearch = false}) async {
-    if (query.trim().isEmpty) return;
-
-    setState(() => _isSearching = true);
-
-    try {
-      final uri = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=8&countrycodes=lk',
-      );
-      
-      final response = await http.get(uri, headers: {
-        'User-Agent': 'LuminaLanka/1.0 (Flutter App)',
-      });
-
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        if (mounted) {
-          setState(() {
-            _searchResults = data.map((item) => {
-              'lat': double.parse(item['lat']),
-              'lon': double.parse(item['lon']),
-              'display_name': item['display_name'] as String,
-            }).toList();
-            _isSearching = false;
-            if (isAutoSearch && _searchResults.isNotEmpty) {
-               _isSearchActive = true;
-            }
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isSearching = false);
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isSearching = false);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final width = _isExpanded ? 210.0 : 64.0;
+    const double width = 64.0;
     
     return Container(
       margin: const EdgeInsets.only(top: 16, bottom: 16, left: 16),
@@ -165,9 +86,9 @@ class _WebSidebarState extends State<WebSidebar> {
             child: ClipRect(
               child: OverflowBox(
                 alignment: Alignment.topLeft,
-                minWidth: _isExpanded ? 210.0 : 64.0,
-                maxWidth: _isExpanded ? 210.0 : 64.0,
-                child: _isExpanded ? _buildExpandedContent() : _buildCollapsedContent(),
+                minWidth: width,
+                maxWidth: width,
+                child: _buildCollapsedContent(),
               ),
             ),
           ),
@@ -181,11 +102,11 @@ class _WebSidebarState extends State<WebSidebar> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         const SizedBox(height: 24),
-        // Sidebar Toggle
+        // Sidebar Toggle placeholder (Optional now, maybe disabled)
         _buildSidebarIconButton(
           icon: CupertinoIcons.sidebar_left,
-          tooltip: 'Expand',
-          onTap: _toggleExpand,
+          tooltip: 'Menu',
+          onTap: () {},
           isActive: false,
         ),
         
@@ -199,17 +120,7 @@ class _WebSidebarState extends State<WebSidebar> {
         ),
         
         // Search
-        _buildSidebarIconButton(
-          icon: CupertinoIcons.search,
-          tooltip: 'Search',
-          onTap: () {
-            _toggleExpand();
-            Future.delayed(const Duration(milliseconds: 300), () {
-              _searchFocusNode.requestFocus();
-            });
-          },
-          isActive: false,
-        ),
+        _buildCollapsedSearchPill(),
         
         const SizedBox(height: 16),
         
@@ -223,22 +134,21 @@ class _WebSidebarState extends State<WebSidebar> {
           isActive: false,
         ),
         
-        const SizedBox(height: 16),
-        
-        // Staff Login
+        const Spacer(),
+
+        // Bottom Staff Login (Collapsed)
         _buildSidebarIconButton(
-          icon: CupertinoIcons.person_crop_circle,
-          tooltip: 'Staff Login',
+          icon: CupertinoIcons.person_solid,
+          tooltip: 'Ward Login',
           onTap: () {
-            // TODO: Open Login Modal
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Staff Login coming soon!')),
+              const SnackBar(content: Text('Ward Login coming soon!')),
             );
           },
           isActive: false,
         ),
-
-        const Spacer(),
+        
+        const SizedBox(height: 16),
 
         // Time & Date Display
         const _TimeDateDisplay(isExpanded: false),
@@ -332,14 +242,20 @@ class _WebSidebarState extends State<WebSidebar> {
 
             const SizedBox(height: 16),
 
-            // Content: Search Results OR Navigation Links
+            // Content: Search Results OR Wards List
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 child: _isSearchActive || _searchController.text.isNotEmpty
                     ? _buildSearchResults()
-                    : _buildNavigationLinks(),
+                    : _buildWardsList(),
               ),
+            ),
+
+            // Bottom Staff Login (Expanded)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: _buildExpandedStaffLogin(),
             ),
 
             // Time & Date Display
@@ -355,197 +271,31 @@ class _WebSidebarState extends State<WebSidebar> {
     );
   }
 
-  Widget _buildSearchBar() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.8), 
-        borderRadius: BorderRadius.circular(10), 
-        border: Border.all(
-          color: _searchFocusNode.hasFocus 
-              ? const Color(0xFF0A84FF).withValues(alpha: 0.8) 
-              : Colors.transparent,
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(CupertinoIcons.search, color: Colors.white54, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              style: TextStyle(fontFamily: 'GoogleSansFlex', color: isDark ? Colors.white : Colors.black87, fontSize: 13),
-              decoration: InputDecoration(
-                hintText: 'Search',
-                hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: isDark ? Colors.white54 : Colors.black54, fontSize: 13),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              onChanged: (value) {
-                if (_debounce?.isActive ?? false) _debounce!.cancel();
-                _debounce = Timer(const Duration(milliseconds: 500), () {
-                  if (value.trim().isNotEmpty) {
-                     _searchAddress(value, isAutoSearch: true);
-                  } else {
-                     setState(() {
-                       _isSearchActive = false;
-                       _searchResults.clear();
-                     });
-                  }
-                });
-              },
-              onSubmitted: _onSearchSubmitted,
-            ),
+  Widget _buildCollapsedSearchPill() {
+    return _TooltipWithPointer(
+      message: 'Search',
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          widget.onSearchTapped?.call();
+        },
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08), 
+            borderRadius: BorderRadius.circular(12),
           ),
-          if (_searchController.text.isNotEmpty)
-            GestureDetector(
-              onTap: _clearSearch,
-              child: const Icon(CupertinoIcons.clear_thick_circled, color: Colors.white54, size: 16),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavigationLinks() {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      children: [
-        _buildNavTile(
-          icon: CupertinoIcons.exclamationmark_triangle_fill,
-          title: 'Report Issue',
-          onTap: widget.onReportTapped,
-          color: const Color(0xFFE84A5F), 
-        ),
-        
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 12.0),
-          child: Divider(color: Colors.white10, height: 1),
-        ),
-        
-        _buildNavTile(
-          icon: CupertinoIcons.person_crop_circle,
-          title: 'Staff Login',
-          onTap: () {
-            // TODO: Open Login Modal
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Staff Login coming soon!')),
-            );
-          },
-          color: Colors.white54, 
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNavTile({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-    bool isSelected = false,
-    Color color = Colors.white54,
-  }) {
-    return InkWell(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap();
-      },
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Row(
-          children: [
-             Container(
-               padding: const EdgeInsets.all(6),
-               decoration: BoxDecoration(
-                 color: color.withValues(alpha: 0.8),
-                 shape: BoxShape.circle,
-               ),
-               child: Icon(icon, color: Colors.white, size: 20),
-             ),
-             const SizedBox(width: 14),
-             Text(
-               title,
-               style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                 color: isSelected ? const Color(0xFF0A84FF) : Colors.white,
-                 fontSize: 13,
-                 fontWeight: FontWeight.w500,
-               ),
-             ),
-          ],
+          child: const Icon(
+            CupertinoIcons.search, 
+            color: Colors.white, 
+            size: 20,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildSearchResults() {
-    if (_isSearching) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: CircularProgressIndicator(color: Color(0xFF0A84FF)),
-        ),
-      );
-    }
-
-    if (_searchResults.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'No results found',
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 14),
-          ),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final result = _searchResults[index];
-        return ListTile(
-          leading: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 16),
-          ),
-          title: Text(
-            result['display_name'],
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 14),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            widget.onLocationSelected?.call(
-              result['lat'],
-              result['lon'],
-              result['display_name'],
-            );
-            _clearSearch();
-            if (MediaQuery.of(context).size.width < 768) {
-               _toggleExpand(); // hide on mobile after search
-            }
-          },
-        );
-      },
-    );
   }
 }
 
