@@ -17,6 +17,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:lumina_lanka/features/map/presentation/widgets/pole_info_sidebar.dart';
+import 'package:lumina_lanka/features/map/presentation/widgets/search_wards_sidebar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -62,6 +63,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   
   // Track WebSidebar expansion to shift PoleInfoSidebar
   bool _isWebSidebarExpanded = false;
+  
+  // Search Wards Sidebar State
+  bool _isSearchWardsOpen = false;
   
   // Initial Center (Colombo/Maharagama area)
   static const LatLng _initialCenter = LatLng(6.9271, 79.8612);
@@ -1191,6 +1195,24 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onClose: () => setState(() => _selectedPole = null),
             ),
 
+          // === SEARCH WARDS SIDEBAR ===
+          if (MediaQuery.of(context).size.width >= 768)
+            SearchWardsSidebar(
+              isVisible: _isSearchWardsOpen,
+              leftPosition: _isWebSidebarExpanded ? 240 : 104,
+              onClose: () => setState(() => _isSearchWardsOpen = false),
+              onLocationSelected: (lat, lng, displayName) {
+                _mapController.move(LatLng(lat, lng), 16.0);
+                setState(() => _isSearchWardsOpen = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Moved to: $displayName'),
+                    backgroundColor: const Color(0xFF0A84FF),
+                  ),
+                );
+              },
+            ),
+
           // === REPORT SIDE PANEL ===
           ReportSidePanel(
             isOpen: _isReportPanelOpen,
@@ -1248,6 +1270,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 },
                 onReportTapped: () {
                   setState(() => _showReportModal = true);
+                },
+                onSearchTapped: () {
+                  setState(() {
+                    _isSearchWardsOpen = !_isSearchWardsOpen;
+                    // Close pole info if search is opening
+                    if (_isSearchWardsOpen) _selectedPole = null;
+                  });
                 },
               ),
             ),
