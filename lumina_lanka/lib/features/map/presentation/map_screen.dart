@@ -21,11 +21,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 
+// Local Imports
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/unified_glass_sheet.dart';
 import '../../../shared/widgets/web_sidebar.dart';
-import '../../../shared/widgets/widgets.dart'; // For GhostPinMarker
+import '../../map_marker/presentation/map_marker_screen.dart';
 import '../../report/presentation/report_side_panel.dart';
 import '../../report/presentation/report_issue_dialog.dart';
 import 'widgets/pole_info_sidebar.dart';
@@ -122,6 +123,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             final lng = pole['longitude'] as double;
             final status = pole['status'] as String;
             final id = pole['id'].toString().substring(0, 5); // Short ID for display
+
+            // Determine color based on status
+            Color markerColor;
+            switch (status) {
+              case 'Reported':
+                markerColor = Colors.red;
+                break;
+              case 'Maintenance':
+                markerColor = Colors.orange;
+                break;
+              default:
+                markerColor = Colors.blue;
+            }
 
             _markers.add(
               Marker(
@@ -283,17 +297,19 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// Save pole location to Supabase
+  /// Save pole location to Firestore
   Future<void> _confirmPoleLocation() async {
     if (_currentMapCenter == null) return;
     
     setState(() => _isSavingPole = true);
     
     try {
-      await Supabase.instance.client.from('poles').insert({
+      await FirebaseFirestore.instance.collection('poles').add({
         'latitude': _currentMapCenter!.latitude,
         'longitude': _currentMapCenter!.longitude,
+        'timestamp': FieldValue.serverTimestamp(),
         'status': 'Working', // Default status
+        'addedBy': 'Admin',   // Placeholder
       });
       
       if (mounted) {
@@ -303,9 +319,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Refresh poles
-        _fetchPolesFromSupabase();
-        // Reset and hide crosshair
+        // Reset and show sheet again
         setState(() {
           _selectedActionIndex = null;
           _isSavingPole = false;
@@ -326,12 +340,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch the auth state to determine roles
+    // Watch the current user's role
     final authState = ref.watch(authProvider);
+    
+    // Check if in "Mark Pole" mode (Index 1)
+    final isMarkingPole = _selectedActionIndex == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Check if in "Mark Pole" mode AND user is a Map Marker
-    final isMarkingPole = _selectedActionIndex == 1 && authState.role == AppRole.marker;
 
     // Automatically switch CartoDB tile URLs based on theme for Plain mode
     if (_currentMapMode == 'Plain') {
@@ -375,9 +389,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 retinaMode: false,
                 tileSize: 256,
                 tileBuilder: (context, widget, tile) {
+                  // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
+
                   // Only apply the Dark Reader filter if in Dark Mode AND using the Standard map
                   if (isDark && _currentMapMode == 'Standard') {
                     return ColorFiltered(
+                      // This specific matrix inverts colors AND rotates hue by 180deg
+                      // It turns white roads black, blue water dark blue, and green parks dark green
                       colorFilter: const ColorFilter.matrix([
                          0.333, -0.667, -0.667, 0, 255,
                         -0.667,  0.333, -0.667, 0, 255,
@@ -395,15 +413,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               MarkerLayer(markers: _markers),
             ],
           ),
-
-          // === CROSSHAIR FOR MARKING POLES ===
-          if (isMarkingPole)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 32.0), // Offset to point at the center
-                child: GhostPinMarker(size: 40, isAccurate: true),
-              ),
-            ),
           
           // === BLUR OVERLAY (Visible when Report Modal is Open) ===
           if (_showReportModal)
@@ -450,6 +459,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       _buildModeItem('Satellite', 'assets/icons/satellite.png'),
                       const SizedBox(width: 16),
                       _buildModeItem('Plain', 'assets/icons/explore.png'), // Using explore.png as fallback
+
                     ],
                   ),
                 ),
@@ -812,7 +822,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           ),
         
-          // === STREET VIEW OVERLAY (Web Only) === ...
+          // === STREET VIEW OVERLAY (Web Only) ===
           if (kIsWeb && _showStreetView)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
@@ -909,21 +919,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           
-          // === MARK POLE FAB (Map Marker Role Only) ===
+          // === MARK POLE BUTTON (Map Marker Role Only) ===
           if (authState.role == AppRole.marker && !isMarkingPole)
-            Positioned(
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
               bottom: MediaQuery.of(context).padding.bottom + 24,
-              right: kIsWeb ? 90 : 24, // Offset to the left of Street View on Web
-              child: FloatingActionButton.extended(
-                backgroundColor: const Color(0xFF0A84FF),
-                onPressed: () {
-                  HapticFeedback.mediumImpact();
-                  setState(() => _selectedActionIndex = 1); // Enter marking mode
-                },
-                icon: const Icon(Icons.add_location_alt, color: Colors.white),
-                label: const Text(
-                  "Mark Pole", 
-                  style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
+              right: kIsWeb ? 90 : 24, // Avoid overlapping StreetView button on web
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _showReportModal ? 0.0 : 1.0,
+                child: IgnorePointer(
+                  ignoring: _showReportModal,
+                  child: FloatingActionButton.extended(
+                    backgroundColor: const Color(0xFF0A84FF),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      // Navigate to the Map Marker Screen
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (_) => const MapMarkerScreen())
+                      );
+                    },
+                    icon: const Icon(Icons.add_location_alt, color: Colors.white),
+                    label: const Text(
+                      "Mark Pole", 
+                      style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.bold)
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1128,6 +1150,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             );
                           },
                         ),
+
+                        // Separate Action Buttons (Floating UNDER the search bar)
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 300),
+                          alignment: Alignment.topCenter,
+                          child: Container(
+                           height: _isSearchActive ? 0 : null, // Collapse when searching
+                           child: AnimatedOpacity(
+                              duration: const Duration(milliseconds: 300),
+                              opacity: _isSearchActive ? 0.0 : 1.0,
+                              child: Padding(
+                                padding: const EdgeInsets.only(top: 16),
+                                child: _buildActionButtons(isDark),
+                              ),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1230,6 +1269,55 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+  
+  Widget _buildActionButtons(bool isDark) {
+    final actions = [
+      ('Public User', CupertinoIcons.person_2_fill),
+      ('Council', CupertinoIcons.building_2_fill),
+      ('Electrician', CupertinoIcons.bolt_fill),
+      ('Marker', CupertinoIcons.map_pin_ellipse),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: actions.map((action) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                // TODO: Handle action tap
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8), 
+                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+                  borderRadius: BorderRadius.circular(100), // Pill shape
+                ),
+                child: Row(
+                  children: [
+                    Icon(action.$2, color: const Color(0xFF008FFF), size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      action.$1,
+                      style: TextStyle(fontFamily: 'GoogleSansFlex', 
+                        color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
