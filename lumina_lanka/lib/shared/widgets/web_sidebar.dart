@@ -6,6 +6,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+
 class WebSidebar extends StatefulWidget {
   final int? selectedActionIndex;
   final ValueChanged<int>? onActionSelected;
@@ -228,6 +229,12 @@ class _WebSidebarState extends State<WebSidebar> {
           onTap: () {},
           isActive: false,
         ),
+
+        const Spacer(),
+
+        // Time & Date Display
+        const _TimeDateDisplay(isExpanded: false),
+        const SizedBox(height: 24),
       ],
     );
   }
@@ -325,6 +332,14 @@ class _WebSidebarState extends State<WebSidebar> {
                     ? _buildSearchResults()
                     : _buildNavigationLinks(),
               ),
+            ),
+
+            // Time & Date Display
+            Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+              ),
+              child: const _TimeDateDisplay(isExpanded: true),
             ),
           ],
         ),
@@ -643,4 +658,139 @@ class _PointerPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Time and Date Display Widget (IST/SLST)
+class _TimeDateDisplay extends StatefulWidget {
+  final bool isExpanded;
+  const _TimeDateDisplay({required this.isExpanded});
+
+  @override
+  State<_TimeDateDisplay> createState() => _TimeDateDisplayState();
+}
+
+class _TimeDateDisplayState extends State<_TimeDateDisplay> {
+  late Timer _timer;
+  late DateTime _currentTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _updateTime();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+  }
+
+  void _updateTime() {
+    final utcNow = DateTime.now().toUtc();
+    // IST / SLST is UTC + 5:30
+    final istNow = utcNow.add(const Duration(hours: 5, minutes: 30));
+    if (mounted) {
+      setState(() {
+        _currentTime = istNow;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hours = _currentTime.hour.toString().padLeft(2, '0');
+    final minutes = _currentTime.minute.toString().padLeft(2, '0');
+    final day = _currentTime.day.toString().padLeft(2, '0');
+    final month = _currentTime.month.toString().padLeft(2, '0');
+
+    if (widget.isExpanded) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Icon(CupertinoIcons.clock, color: Colors.white.withValues(alpha: 0.5), size: 20),
+            const SizedBox(width: 12),
+            Text(
+              '$hours:$minutes',
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: Colors.white.withValues(alpha: 0.9),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              '$day/$month',
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          hours,
+          style: TextStyle(
+            fontFamily: 'GoogleSansFlex',
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+        Text(
+          minutes,
+          style: TextStyle(
+            fontFamily: 'GoogleSansFlex',
+            color: Colors.white.withValues(alpha: 0.9),
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            height: 1.1,
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          width: 24,
+          height: 2,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(1),
+          ),
+        ),
+        Text(
+          '$day/',
+          style: TextStyle(
+            fontFamily: 'GoogleSansFlex',
+            color: Colors.white.withValues(alpha: 0.6),
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            height: 1.0,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 14.0),
+          child: Text(
+            month,
+            style: TextStyle(
+              fontFamily: 'GoogleSansFlex',
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              height: 1.0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

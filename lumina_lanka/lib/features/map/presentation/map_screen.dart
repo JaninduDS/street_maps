@@ -16,6 +16,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -85,9 +86,78 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     super.initState();
     _mapController = MapController();
     _initLocation();
-    _addDemoPoles();
+    _fetchPolesFromSupabase();
     // Initialize center
     _currentMapCenter = _initialCenter;
+  }
+
+  /// Fetch real-time pole data from Supabase
+  Future<void> _fetchPolesFromSupabase() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('poles')
+          .select();
+
+      final List<dynamic> data = response as List<dynamic>;
+
+      if (mounted) {
+        setState(() {
+          _markers.clear(); // Clear existing markers
+          for (var pole in data) {
+            final lat = pole['latitude'] as double;
+            final lng = pole['longitude'] as double;
+            final status = pole['status'] as String;
+            final id = pole['id'].toString().substring(0, 5); // Short ID for display
+
+            // Determine color based on status
+            Color markerColor;
+            switch (status) {
+              case 'Reported':
+                markerColor = Colors.red;
+                break;
+              case 'Maintenance':
+                markerColor = Colors.orange;
+                break;
+              default:
+                markerColor = Colors.blue;
+            }
+
+            _markers.add(
+              Marker(
+                point: LatLng(lat, lng),
+                width: 40,
+                height: 40,
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Street Light #$id: $status'),
+                        backgroundColor: markerColor,
+                      ),
+                    );
+                  },
+                  child: Icon(
+                    Icons.lightbulb,
+                    color: markerColor,
+                    size: 30,
+                    shadows: [
+                      BoxShadow(
+                        color: markerColor.withValues(alpha: 0.6),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching poles from Supabase: $e');
+    }
   }
 
   /// Initialize location services
