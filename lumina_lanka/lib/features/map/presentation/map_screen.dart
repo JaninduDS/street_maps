@@ -816,7 +816,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       ],
                                 ),
                                 child: Icon(
-                                  CupertinoIcons.binoculars_fill,
+                                  Icons.streetview,
                                   color: isDark ? Colors.white70 : Colors.black87,
                                   size: 22,
                                 ),

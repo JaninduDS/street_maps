@@ -150,7 +150,7 @@ class _WebStreetViewState extends State<WebStreetView> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  CupertinoIcons.binoculars_fill,
+                  Icons.streetview,
                   color: Colors.white,
                   size: 20,
                 ),
