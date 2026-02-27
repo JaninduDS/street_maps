@@ -31,6 +31,7 @@ import '../../report/presentation/report_issue_dialog.dart';
 import 'widgets/pole_info_sidebar.dart';
 import 'widgets/search_wards_sidebar.dart';
 import 'widgets/street_view_widget.dart';
+import '../../../core/utils/app_notifications.dart';
 
 /// Main map screen with OpenStreetMap and Unified Bottom Sheet
 class MapScreen extends ConsumerStatefulWidget {
@@ -297,11 +298,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       });
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pole Marked Successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        AppNotifications.show(
+          context: context,
+          message: 'Pole Marked Successfully!',
+          icon: CupertinoIcons.check_mark_circled_solid,
+          iconColor: Colors.green,
         );
         // Refresh poles
         _fetchPolesFromSupabase();
@@ -313,11 +314,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving pole: $e'),
-            backgroundColor: Colors.red,
-          ),
+        AppNotifications.show(
+          context: context,
+          message: 'Error saving pole: $e',
+          icon: CupertinoIcons.exclamationmark_triangle_fill,
+          iconColor: Colors.redAccent,
         );
         setState(() => _isSavingPole = false);
       }
@@ -1120,11 +1121,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             _mapController.move(LatLng(lat, lng), 16.0);
                             FocusManager.instance.primaryFocus?.unfocus();
                             
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Moved to: $displayName'),
-                                backgroundColor: const Color(0xFF0A84FF),
-                              ),
+                            AppNotifications.show(
+                              context: context,
+                              message: 'Moved to: $displayName',
+                              icon: CupertinoIcons.location_solid,
+                              iconColor: const Color(0xFF0A84FF),
                             );
                           },
                         ),
@@ -1153,11 +1154,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               onLocationSelected: (lat, lng, displayName) {
                 _mapController.move(LatLng(lat, lng), 16.0);
                 setState(() => _isSearchWardsOpen = false);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Moved to: $displayName'),
-                    backgroundColor: const Color(0xFF0A84FF),
-                  ),
+                AppNotifications.show(
+                  context: context,
+                  message: 'Moved to: $displayName',
+                  icon: CupertinoIcons.location_solid,
+                  iconColor: const Color(0xFF0A84FF),
                 );
               },
             ),
@@ -1210,11 +1211,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 },
                 onLocationSelected: (lat, lng, displayName) {
                   _mapController.move(LatLng(lat, lng), 16.0);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Moved to: $displayName'),
-                      backgroundColor: const Color(0xFF0A84FF),
-                    ),
+                  AppNotifications.show(
+                    context: context,
+                    message: 'Moved to: $displayName',
+                    icon: CupertinoIcons.location_solid,
+                    iconColor: const Color(0xFF0A84FF),
                   );
                 },
                 onReportTapped: () {

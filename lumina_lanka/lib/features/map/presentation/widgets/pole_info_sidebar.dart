@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/auth/auth_provider.dart';
+import '../../../../core/utils/app_notifications.dart';
 
 class PoleInfoSidebar extends ConsumerStatefulWidget {
   final Map<String, dynamic>? poleData;
@@ -146,18 +147,21 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                                             
                                         // 2. Show Success
                                         if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text('Pole marked as Working!'),
-                                              backgroundColor: Color(0xFF34C759),
-                                            ),
+                                          AppNotifications.show(
+                                            context: context,
+                                            message: 'Pole marked as Working!',
+                                            icon: CupertinoIcons.check_mark_circled_solid,
+                                            iconColor: const Color(0xFF34C759),
                                           );
                                           widget.onClose();
                                         }
                                       } catch (e) {
                                         if (mounted) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                          AppNotifications.show(
+                                            context: context,
+                                            message: 'Error: $e',
+                                            icon: CupertinoIcons.exclamationmark_triangle_fill,
+                                            iconColor: Colors.redAccent,
                                           );
                                         }
                                       }
@@ -186,8 +190,10 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                                   textColor: Colors.white,
                                   onTap: () {
                                     Clipboard.setData(ClipboardData(text: widget.poleData!['id'].toString()));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('ID Copied')),
+                                    AppNotifications.show(
+                                      context: context,
+                                      message: 'ID Copied',
+                                      icon: CupertinoIcons.doc_on_clipboard_fill,
                                     );
                                   },
                                 ),

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/app_notifications.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../map_marker/presentation/map_marker_screen.dart';
 
@@ -95,8 +96,10 @@ class RoleSelectionScreen extends StatelessWidget {
                       delay: 500.ms,
                       onTap: () {
                         // TODO: Navigate to public map
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Coming soon!')),
+                        AppNotifications.show(
+                          context: context,
+                          message: 'Coming soon!',
+                          icon: Icons.info_outline,
                         );
                       },
                     ),
@@ -126,8 +129,11 @@ class RoleSelectionScreen extends StatelessWidget {
                       delay: 700.ms,
                       onTap: () {
                         // TODO: Navigate to electrician screen
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Login required')),
+                        AppNotifications.show(
+                          context: context,
+                          message: 'Login required',
+                          icon: Icons.lock_outline,
+                          iconColor: AppColors.accentAmber,
                         );
                       },
                     ),
@@ -141,8 +147,11 @@ class RoleSelectionScreen extends StatelessWidget {
                       delay: 800.ms,
                       onTap: () {
                         // TODO: Navigate to council dashboard
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Login required')),
+                        AppNotifications.show(
+                          context: context,
+                          message: 'Login required',
+                          icon: Icons.lock_outline,
+                          iconColor: AppColors.accentGreen,
                         );
                       },
                     ),

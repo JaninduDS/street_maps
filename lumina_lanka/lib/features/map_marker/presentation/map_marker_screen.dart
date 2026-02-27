@@ -11,7 +11,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../../core/utils/app_notifications.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -121,11 +123,11 @@ class _MapMarkerScreenState extends ConsumerState<MapMarkerScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.accentRed,
-      ),
+    AppNotifications.show(
+      context: context,
+      message: message,
+      icon: CupertinoIcons.exclamationmark_triangle_fill,
+      iconColor: AppColors.accentRed,
     );
   }
 
@@ -205,25 +207,11 @@ class _MapMarkerScreenState extends ConsumerState<MapMarkerScreen> {
       // Show success feedback
       if (mounted) {
         HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.accentGreen,
-                    boxShadow: GlowStyles.greenGlow,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text('Pole ${result['poleId']} marked successfully!'),
-              ],
-            ),
-            backgroundColor: AppColors.bgSecondary,
-          ),
+        AppNotifications.show(
+          context: context,
+          message: 'Pole ${result['poleId']} marked successfully!',
+          icon: CupertinoIcons.check_mark_circled_solid,
+          iconColor: AppColors.accentGreen,
         );
       }
     }

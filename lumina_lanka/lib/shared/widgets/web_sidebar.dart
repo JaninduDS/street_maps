@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Import Auth Provider and Login Dialog
 import '../../core/auth/auth_provider.dart';
+import '../../core/utils/app_notifications.dart';
 import '../../features/auth/presentation/widgets/login_dialog.dart';
 
 class WebSidebar extends ConsumerStatefulWidget {
@@ -450,8 +451,10 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
             icon: CupertinoIcons.chart_bar_alt_fill,
             title: 'Council Dashboard',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Dashboard coming soon!')),
+              AppNotifications.show(
+                context: context,
+                message: 'Dashboard coming soon!',
+                icon: CupertinoIcons.time,
               );
             },
             color: const Color(0xFF34C759), 
@@ -465,8 +468,10 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
             icon: CupertinoIcons.bolt_fill,
             title: 'My Tasks',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Tasks coming soon!')),
+              AppNotifications.show(
+                context: context,
+                message: 'Tasks coming soon!',
+                icon: CupertinoIcons.time,
               );
             },
             color: const Color(0xFFFFCC00), 
@@ -515,29 +520,33 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
               ),
             ),
             const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  isLoggedIn ? 'Log Out' : 'Staff Login',
-                  style: TextStyle(
-                    fontFamily: 'GoogleSansFlex',
-                    color: isLoggedIn ? Colors.redAccent : Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (isLoggedIn)
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    authState.role.name.toUpperCase(),
-                    style: const TextStyle(
+                    isLoggedIn ? 'Log Out' : 'Staff Login',
+                    style: TextStyle(
                       fontFamily: 'GoogleSansFlex',
-                      color: Colors.white54,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      color: isLoggedIn ? Colors.redAccent : Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500, // Reduced from w600
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-              ],
+                  if (isLoggedIn)
+                    Text(
+                      authState.role.name.toUpperCase(),
+                      style: const TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        color: Colors.white54,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600, // Reduced from bold
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
             ),
           ],
         ),

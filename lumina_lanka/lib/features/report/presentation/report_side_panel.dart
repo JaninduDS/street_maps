@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:lumina_lanka/shared/widgets/noise_overlay.dart';
+import '../../../core/utils/app_notifications.dart';
 
 class ReportSidePanel extends StatefulWidget {
   final bool isOpen;
@@ -472,11 +473,11 @@ class _ReportWizardState extends State<_ReportWizard> {
                 _nextStep();
               } else {
                 // Submit
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Report Submitted Successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
+                AppNotifications.show(
+                  context: context,
+                  message: 'Report Submitted Successfully!',
+                  icon: CupertinoIcons.check_mark_circled_solid,
+                  iconColor: Colors.green,
                 );
                 widget.onClose();
               }
