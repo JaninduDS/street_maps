@@ -210,23 +210,28 @@ class _WebSidebarState extends State<WebSidebar> {
         
         const SizedBox(height: 16),
         
-        // Menu / Grid
+        // Report Issue
         _buildSidebarIconButton(
-          icon: CupertinoIcons.square_grid_2x2_fill,
-          tooltip: 'Menu',
+          icon: CupertinoIcons.exclamationmark_triangle_fill,
+          tooltip: 'Report Issue',
           onTap: () {
-             widget.onReportTapped(); // As an example action
+             widget.onReportTapped(); 
           },
           isActive: false,
         ),
         
         const SizedBox(height: 16),
         
-        // Action / Share
+        // Staff Login
         _buildSidebarIconButton(
-          icon: CupertinoIcons.arrow_turn_up_right,
-          tooltip: 'Action',
-          onTap: () {},
+          icon: CupertinoIcons.person_crop_circle,
+          tooltip: 'Staff Login',
+          onTap: () {
+            // TODO: Open Login Modal
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Staff Login coming soon!')),
+            );
+          },
           isActive: false,
         ),
 
@@ -415,26 +420,22 @@ class _WebSidebarState extends State<WebSidebar> {
           onTap: widget.onReportTapped,
           color: const Color(0xFFE84A5F), 
         ),
-        _buildNavTile(
-          icon: CupertinoIcons.building_2_fill,
-          title: 'Council',
-          isSelected: widget.selectedActionIndex == 1,
-          onTap: () => widget.onActionSelected?.call(1),
-          color: const Color(0xFF0A84FF), 
+        
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 12.0),
+          child: Divider(color: Colors.white10, height: 1),
         ),
+        
         _buildNavTile(
-          icon: CupertinoIcons.bolt_fill,
-          title: 'Electrician',
-          isSelected: widget.selectedActionIndex == 2,
-          onTap: () => widget.onActionSelected?.call(2),
-          color: const Color(0xFF34C759), 
-        ),
-        _buildNavTile(
-          icon: CupertinoIcons.map_pin_ellipse,
-          title: 'Marker Mode',
-          isSelected: widget.selectedActionIndex == 3,
-          onTap: () => widget.onActionSelected?.call(3),
-          color: const Color(0xFFAF52DE), 
+          icon: CupertinoIcons.person_crop_circle,
+          title: 'Staff Login',
+          onTap: () {
+            // TODO: Open Login Modal
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Staff Login coming soon!')),
+            );
+          },
+          color: Colors.white54, 
         ),
       ],
     );
