@@ -6,8 +6,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class WebSidebar extends StatefulWidget {
+// Import Auth Provider and Login Dialog
+import '../../core/auth/auth_provider.dart';
+import '../../features/auth/presentation/widgets/login_dialog.dart';
+
+class WebSidebar extends ConsumerStatefulWidget {
   final int? selectedActionIndex;
   final ValueChanged<int>? onActionSelected;
   final void Function(double lat, double lng, String displayName)? onLocationSelected;
@@ -26,10 +31,10 @@ class WebSidebar extends StatefulWidget {
   });
 
   @override
-  State<WebSidebar> createState() => _WebSidebarState();
+  ConsumerState<WebSidebar> createState() => _WebSidebarState();
 }
 
-class _WebSidebarState extends State<WebSidebar> {
+class _WebSidebarState extends ConsumerState<WebSidebar> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
   List<Map<String, dynamic>> _searchResults = [];
@@ -134,8 +139,8 @@ class _WebSidebarState extends State<WebSidebar> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.50), // 000000 50%
-              blurRadius: 60, // Shadow - Blur - BG: 60
+              color: Colors.black.withOpacity(0.50),
+              blurRadius: 60,
               offset: const Offset(0, 0),
             ),
           ],
@@ -143,24 +148,24 @@ class _WebSidebarState extends State<WebSidebar> {
         child: GlassmorphicContainer(
           width: width,
           height: double.infinity,
-          borderRadius: 24, // Global Radius: 6 -> 24 for more curved edges
-          blur: 14, // Frost - Large: 14
+          borderRadius: 24,
+          blur: 14,
           alignment: Alignment.topCenter,
           border: 1.0,
           linearGradient: LinearGradient(
-            begin: const Alignment(-1.0, -1.0), // approximating -45 degrees
+            begin: const Alignment(-1.0, -1.0),
             end: const Alignment(1.0, 1.0),
             colors: [
-              const Color(0xFF262626).withValues(alpha: 0.60), // Liquid Glass Opacity: 60
-              const Color(0xFF262626).withValues(alpha: 0.60), 
+              const Color(0xFF262626).withOpacity(0.60),
+              const Color(0xFF262626).withOpacity(0.60), 
             ],
           ),
           borderGradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Colors.white.withValues(alpha: 0.20), // 000000 20% (inverted for border)
-              Colors.white.withValues(alpha: 0.11), // 000000 11% (inverted for border)
+              Colors.white.withOpacity(0.20),
+              Colors.white.withOpacity(0.11),
             ],
           ),
           child: SafeArea( 
@@ -179,6 +184,9 @@ class _WebSidebarState extends State<WebSidebar> {
   }
 
   Widget _buildCollapsedContent() {
+    final authState = ref.watch(authProvider);
+    final isLoggedIn = authState.user != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -196,7 +204,7 @@ class _WebSidebarState extends State<WebSidebar> {
           child: Container(
             height: 1,
             width: 32,
-            color: Colors.white.withValues(alpha: 0.1),
+            color: Colors.white.withOpacity(0.1),
           ),
         ),
         
@@ -226,12 +234,17 @@ class _WebSidebarState extends State<WebSidebar> {
 
         // Bottom Staff Login (Collapsed)
         _buildSidebarIconButton(
-          icon: CupertinoIcons.person_solid,
-          tooltip: 'Ward Login',
+          icon: isLoggedIn ? CupertinoIcons.square_arrow_right : CupertinoIcons.person_solid,
+          tooltip: isLoggedIn ? 'Log Out' : 'Staff Login',
           onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Ward Login coming soon!')),
-            );
+            if (isLoggedIn) {
+              ref.read(authProvider.notifier).signOut();
+            } else {
+              showDialog(
+                context: context,
+                builder: (context) => const LoginDialog(),
+              );
+            }
           },
           isActive: false,
         ),
@@ -264,20 +277,19 @@ class _WebSidebarState extends State<WebSidebar> {
           height: 44,
           decoration: BoxDecoration(
             color: isActive 
-              ? Colors.white.withValues(alpha: 0.2) 
-              : Colors.transparent, // cleaner dark mode buttons
-            borderRadius: BorderRadius.circular(6), // Global Radius: 6
+              ? Colors.white.withOpacity(0.2) 
+              : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Icon(
             icon, 
-            color: isActive ? Colors.white : const Color(0xFFF5F5F5).withValues(alpha: 0.67), // F5F5F5 67%
+            color: isActive ? Colors.white : const Color(0xFFF5F5F5).withOpacity(0.67),
             size: 22,
           ),
         ),
       ),
     );
   }
-
 
   Widget _buildExpandedContent() {
     return SingleChildScrollView(
@@ -299,7 +311,7 @@ class _WebSidebarState extends State<WebSidebar> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(CupertinoIcons.sidebar_left, color: Colors.white, size: 20),
@@ -308,7 +320,7 @@ class _WebSidebarState extends State<WebSidebar> {
                   const SizedBox(width: 12),
                   const Icon(CupertinoIcons.map_fill, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Text(
+                  const Text(
                     "Maps",
                     style: TextStyle(fontFamily: 'GoogleSansFlex', 
                       color: Colors.white,
@@ -349,7 +361,7 @@ class _WebSidebarState extends State<WebSidebar> {
             // Time & Date Display
             Container(
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                border: Border(top: BorderSide(color: Colors.white.withOpacity(0.1))),
               ),
               child: const _TimeDateDisplay(isExpanded: true),
             ),
@@ -366,18 +378,18 @@ class _WebSidebarState extends State<WebSidebar> {
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.black.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.8), 
+        color: isDark ? Colors.black.withOpacity(0.3) : Colors.white.withOpacity(0.8), 
         borderRadius: BorderRadius.circular(10), 
         border: Border.all(
           color: _searchFocusNode.hasFocus 
-              ? const Color(0xFF0A84FF).withValues(alpha: 0.8) 
+              ? const Color(0xFF0A84FF).withOpacity(0.8) 
               : Colors.transparent,
           width: 1.5,
         ),
       ),
       child: Row(
         children: [
-          Icon(CupertinoIcons.search, color: Colors.white54, size: 18),
+          const Icon(CupertinoIcons.search, color: Colors.white54, size: 18),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
@@ -418,33 +430,74 @@ class _WebSidebarState extends State<WebSidebar> {
   }
 
   Widget _buildNavigationLinks() {
+    final authState = ref.watch(authProvider);
+
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
+        // EVERYONE sees Report Issue
         _buildNavTile(
           icon: CupertinoIcons.exclamationmark_triangle_fill,
           title: 'Report Issue',
           onTap: widget.onReportTapped,
           color: const Color(0xFFE84A5F), 
         ),
+        
+        // ONLY COUNCIL sees Dashboard
+        if (authState.role == AppRole.council) ...[
+          const SizedBox(height: 8),
+          _buildNavTile(
+            icon: CupertinoIcons.chart_bar_alt_fill,
+            title: 'Council Dashboard',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Dashboard coming soon!')),
+              );
+            },
+            color: const Color(0xFF34C759), 
+          ),
+        ],
+
+        // ONLY ELECTRICIAN sees Tasks
+        if (authState.role == AppRole.electrician) ...[
+          const SizedBox(height: 8),
+          _buildNavTile(
+            icon: CupertinoIcons.bolt_fill,
+            title: 'My Tasks',
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Tasks coming soon!')),
+              );
+            },
+            color: const Color(0xFFFFCC00), 
+          ),
+        ],
       ],
     );
   }
 
   Widget _buildExpandedStaffLogin() {
+    final authState = ref.watch(authProvider);
+    final isLoggedIn = authState.user != null;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ward Login coming soon!')),
-        );
+        if (isLoggedIn) {
+          ref.read(authProvider.notifier).signOut();
+        } else {
+          showDialog(
+            context: context,
+            builder: (context) => const LoginDialog(),
+          );
+        }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05), // Translucent box
+          color: isLoggedIn ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
         child: Row(
           children: [
@@ -452,24 +505,39 @@ class _WebSidebarState extends State<WebSidebar> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: isLoggedIn ? Colors.red.withOpacity(0.2) : Colors.white.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                CupertinoIcons.person_solid, 
-                color: Colors.white, 
+              child: Icon(
+                isLoggedIn ? CupertinoIcons.square_arrow_right : CupertinoIcons.person_solid, 
+                color: isLoggedIn ? Colors.redAccent : Colors.white, 
                 size: 18,
               ),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Ward Login',
-              style: TextStyle(
-                fontFamily: 'GoogleSansFlex',
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isLoggedIn ? 'Log Out' : 'Staff Login',
+                  style: TextStyle(
+                    fontFamily: 'GoogleSansFlex',
+                    color: isLoggedIn ? Colors.redAccent : Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isLoggedIn)
+                  Text(
+                    authState.role.name.toUpperCase(),
+                    style: const TextStyle(
+                      fontFamily: 'GoogleSansFlex',
+                      color: Colors.white54,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+              ],
             ),
           ],
         ),
@@ -493,7 +561,7 @@ class _WebSidebarState extends State<WebSidebar> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
+          color: isSelected ? Colors.white.withOpacity(0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Row(
@@ -501,7 +569,7 @@ class _WebSidebarState extends State<WebSidebar> {
              Container(
                padding: const EdgeInsets.all(6),
                decoration: BoxDecoration(
-                 color: color.withValues(alpha: 0.8),
+                 color: color.withOpacity(0.8),
                  shape: BoxShape.circle,
                ),
                child: Icon(icon, color: Colors.white, size: 20),
@@ -532,9 +600,9 @@ class _WebSidebarState extends State<WebSidebar> {
     }
 
     if (_searchResults.isEmpty) {
-      return Center(
+      return const Center(
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Text(
             'No results found',
             style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 14),
@@ -552,14 +620,14 @@ class _WebSidebarState extends State<WebSidebar> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: Colors.white.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 16),
           ),
           title: Text(
             result['display_name'],
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 14),
+            style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 14),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -629,7 +697,7 @@ class _TooltipWithPointerState extends State<_TooltipWithPointer> {
                       ),
                       child: Text(
                         widget.message,
-                        style: TextStyle(fontFamily: 'GoogleSansFlex', 
+                        style: const TextStyle(fontFamily: 'GoogleSansFlex', 
                           color: Colors.white,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -746,13 +814,13 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         child: Row(
           children: [
-            Icon(CupertinoIcons.clock, color: Colors.white.withValues(alpha: 0.5), size: 20),
+            Icon(CupertinoIcons.clock, color: Colors.white.withOpacity(0.5), size: 20),
             const SizedBox(width: 12),
             Text(
               '$hours:$minutes',
               style: TextStyle(
                 fontFamily: 'GoogleSansFlex',
-                color: Colors.white.withValues(alpha: 0.9),
+                color: Colors.white.withOpacity(0.9),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -762,7 +830,7 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
               '$day/$month',
               style: TextStyle(
                 fontFamily: 'GoogleSansFlex',
-                color: Colors.white.withValues(alpha: 0.6),
+                color: Colors.white.withOpacity(0.6),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -779,7 +847,7 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
           hours,
           style: TextStyle(
             fontFamily: 'GoogleSansFlex',
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Colors.white.withOpacity(0.9),
             fontSize: 18,
             fontWeight: FontWeight.w700,
             height: 1.1,
@@ -789,7 +857,7 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
           minutes,
           style: TextStyle(
             fontFamily: 'GoogleSansFlex',
-            color: Colors.white.withValues(alpha: 0.9),
+            color: Colors.white.withOpacity(0.9),
             fontSize: 18,
             fontWeight: FontWeight.w700,
             height: 1.1,
@@ -800,7 +868,7 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
           width: 24,
           height: 2,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
+            color: Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(1),
           ),
         ),
@@ -808,7 +876,7 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
           '$day/',
           style: TextStyle(
             fontFamily: 'GoogleSansFlex',
-            color: Colors.white.withValues(alpha: 0.6),
+            color: Colors.white.withOpacity(0.6),
             fontSize: 15,
             fontWeight: FontWeight.w700,
             height: 1.0,
@@ -820,7 +888,7 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
             month,
             style: TextStyle(
               fontFamily: 'GoogleSansFlex',
-              color: Colors.white.withValues(alpha: 0.6),
+              color: Colors.white.withOpacity(0.6),
               fontSize: 15,
               fontWeight: FontWeight.w700,
               height: 1.0,

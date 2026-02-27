@@ -16,18 +16,20 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
-import 'package:lumina_lanka/features/map/presentation/widgets/pole_info_sidebar.dart';
-import 'package:lumina_lanka/features/map/presentation/widgets/search_wards_sidebar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/unified_glass_sheet.dart';
+import '../../../shared/widgets/web_sidebar.dart';
+import '../../../shared/widgets/widgets.dart'; // For GhostPinMarker
 import '../../report/presentation/report_side_panel.dart';
 import '../../report/presentation/report_issue_dialog.dart';
-import '../../../shared/widgets/web_sidebar.dart';
-import '../../../core/theme/theme_provider.dart'; // Added theme provider import
+import 'widgets/pole_info_sidebar.dart';
+import 'widgets/search_wards_sidebar.dart';
 import 'widgets/street_view_widget.dart';
 
 /// Main map screen with OpenStreetMap and Unified Bottom Sheet
@@ -121,19 +123,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             final status = pole['status'] as String;
             final id = pole['id'].toString().substring(0, 5); // Short ID for display
 
-            // Determine color based on status
-            Color markerColor;
-            switch (status) {
-              case 'Reported':
-                markerColor = Colors.red;
-                break;
-              case 'Maintenance':
-                markerColor = Colors.orange;
-                break;
-              default:
-                markerColor = Colors.blue;
-            }
-
             _markers.add(
               Marker(
                 point: LatLng(lat, lng),
@@ -220,53 +209,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  /// Add demo pole markers
-  void _addDemoPoles() {
-    // Demo data
-    final poles = [
-      (6.8472, 79.9266, 'Working', Colors.blue),
-      (6.8485, 79.9280, 'Working', Colors.blue),
-      (6.8460, 79.9250, 'Reported', Colors.red),
-      (6.8490, 79.9240, 'Working', Colors.blue),
-      (6.8455, 79.9275, 'Maintenance', Colors.orange),
-    ];
-
-    if (mounted) {
-      setState(() {
-        for (int i = 0; i < poles.length; i++) {
-          _markers.add(
-            Marker(
-              point: LatLng(poles[i].$1, poles[i].$2),
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                onTap: () {
-                    HapticFeedback.lightImpact();
-                    if (mounted) {
-                      setState(() {
-                         _selectedPole = {
-                           'id': '${i + 100}',
-                           'status': poles[i].$3,
-                           'latitude': poles[i].$1,
-                           'longitude': poles[i].$2,
-                         };
-                      });
-                      _mapController.move(LatLng(poles[i].$1, poles[i].$2), 18.0);
-                    }
-                },
-                child: Image.asset(
-                  'assets/icons/light_icon.png',
-                  width: 30,
-                  height: 30,
-                ),
-              ),
-            ),
-          );
-        }
-      });
-    }
-  }
-
   /// Toggle Map Modes Popup
   void _toggleMapModePopup() {
     setState(() => _isMapModeOpen = !_isMapModeOpen);
@@ -341,19 +283,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// Save pole location to Firestore
+  /// Save pole location to Supabase
   Future<void> _confirmPoleLocation() async {
     if (_currentMapCenter == null) return;
     
     setState(() => _isSavingPole = true);
     
     try {
-      await FirebaseFirestore.instance.collection('poles').add({
+      await Supabase.instance.client.from('poles').insert({
         'latitude': _currentMapCenter!.latitude,
         'longitude': _currentMapCenter!.longitude,
-        'timestamp': FieldValue.serverTimestamp(),
         'status': 'Working', // Default status
-        'addedBy': 'Admin',   // Placeholder
       });
       
       if (mounted) {
@@ -363,7 +303,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             backgroundColor: Colors.green,
           ),
         );
-        // Reset and show sheet again
+        // Refresh poles
+        _fetchPolesFromSupabase();
+        // Reset and hide crosshair
         setState(() {
           _selectedActionIndex = null;
           _isSavingPole = false;
@@ -384,9 +326,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Check if in "Mark Pole" mode (Index 1)
-    final isMarkingPole = _selectedActionIndex == 1;
+    // Watch the auth state to determine roles
+    final authState = ref.watch(authProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Check if in "Mark Pole" mode AND user is a Map Marker
+    final isMarkingPole = _selectedActionIndex == 1 && authState.role == AppRole.marker;
 
     // Automatically switch CartoDB tile URLs based on theme for Plain mode
     if (_currentMapMode == 'Plain') {
@@ -430,13 +375,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 retinaMode: false,
                 tileSize: 256,
                 tileBuilder: (context, widget, tile) {
-                  // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
-
                   // Only apply the Dark Reader filter if in Dark Mode AND using the Standard map
                   if (isDark && _currentMapMode == 'Standard') {
                     return ColorFiltered(
-                      // This specific matrix inverts colors AND rotates hue by 180deg
-                      // It turns white roads black, blue water dark blue, and green parks dark green
                       colorFilter: const ColorFilter.matrix([
                          0.333, -0.667, -0.667, 0, 255,
                         -0.667,  0.333, -0.667, 0, 255,
@@ -454,6 +395,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               MarkerLayer(markers: _markers),
             ],
           ),
+
+          // === CROSSHAIR FOR MARKING POLES ===
+          if (isMarkingPole)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 32.0), // Offset to point at the center
+                child: GhostPinMarker(size: 40, isAccurate: true),
+              ),
+            ),
           
           // === BLUR OVERLAY (Visible when Report Modal is Open) ===
           if (_showReportModal)
@@ -500,7 +450,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       _buildModeItem('Satellite', 'assets/icons/satellite.png'),
                       const SizedBox(width: 16),
                       _buildModeItem('Plain', 'assets/icons/explore.png'), // Using explore.png as fallback
-
                     ],
                   ),
                 ),
@@ -960,6 +909,25 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           
+          // === MARK POLE FAB (Map Marker Role Only) ===
+          if (authState.role == AppRole.marker && !isMarkingPole)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+              right: kIsWeb ? 90 : 24, // Offset to the left of Street View on Web
+              child: FloatingActionButton.extended(
+                backgroundColor: const Color(0xFF0A84FF),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  setState(() => _selectedActionIndex = 1); // Enter marking mode
+                },
+                icon: const Icon(Icons.add_location_alt, color: Colors.white),
+                label: const Text(
+                  "Mark Pole", 
+                  style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+
           // === REPORT BUTTON (Bottom Left/Center) - Mobile Only ===
           if (MediaQuery.of(context).size.width < 768)
             AnimatedPositioned(
@@ -1135,8 +1103,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start, // Align left
                       children: [
-                        // Removed Lumina Title Text
-
                         // Unified Search Sheet
                         UnifiedGlassSheet(
                           width: MediaQuery.of(context).size.width * 0.35, // Desktop/iPad sidebar width
@@ -1161,23 +1127,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               ),
                             );
                           },
-                        ),
-
-                        // Separate Action Buttons (Floating UNDER the search bar)
-                        AnimatedSize(
-                          duration: const Duration(milliseconds: 300),
-                          alignment: Alignment.topCenter,
-                          child: Container(
-                           height: _isSearchActive ? 0 : null, // Collapse when searching
-                           child: AnimatedOpacity(
-                              duration: const Duration(milliseconds: 300),
-                              opacity: _isSearchActive ? 0.0 : 1.0,
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 16),
-                                child: _buildActionButtons(isDark),
-                              ),
-                            ),
-                          ),
                         ),
                       ],
                     ),
@@ -1284,54 +1233,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
   }
-  Widget _buildActionButtons(bool isDark) {
-    final actions = [
-      ('Public User', CupertinoIcons.person_2_fill),
-      ('Council', CupertinoIcons.building_2_fill),
-      ('Electrician', CupertinoIcons.bolt_fill),
-      ('Marker', CupertinoIcons.map_pin_ellipse),
-    ];
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: actions.map((action) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6),
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                // TODO: Handle action tap
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8), 
-                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
-                  borderRadius: BorderRadius.circular(100), // Pill shape
-                ),
-                child: Row(
-                  children: [
-                    Icon(action.$2, color: const Color(0xFF008FFF), size: 16),
-                    const SizedBox(width: 8),
-                    Text(
-                      action.$1,
-                      style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                        color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
 }
 
 /// Custom painter for the red North triangle in the compass
@@ -1358,5 +1259,3 @@ class TrianglePainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
-
-
