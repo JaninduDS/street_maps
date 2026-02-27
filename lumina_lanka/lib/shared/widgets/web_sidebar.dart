@@ -584,12 +584,18 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                child: Icon(icon, color: Colors.white, size: 20),
              ),
              const SizedBox(width: 14),
-             Text(
-               title,
-               style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                 color: isSelected ? const Color(0xFF0A84FF) : Colors.white,
-                 fontSize: 13,
-                 fontWeight: FontWeight.w500,
+             // Wrap the Text in an Expanded widget
+             Expanded(
+               child: Text(
+                 title,
+                 style: TextStyle(
+                   fontFamily: 'GoogleSansFlex', 
+                   color: isSelected ? const Color(0xFF0A84FF) : Colors.white,
+                   fontSize: 13,
+                   fontWeight: FontWeight.w500,
+                 ),
+                 maxLines: 1,
+                 overflow: TextOverflow.ellipsis, // Adds the "..." if it's too long
                ),
              ),
           ],
