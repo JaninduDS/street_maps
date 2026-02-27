@@ -15,6 +15,7 @@ class WebSidebar extends ConsumerStatefulWidget {
   final ValueChanged<int>? onActionSelected;
   final void Function(double lat, double lng, String displayName)? onLocationSelected;
   final VoidCallback onReportTapped;
+  final ValueChanged<bool>? onExpandedChanged;
   
   const WebSidebar({
     super.key,
@@ -22,6 +23,7 @@ class WebSidebar extends ConsumerStatefulWidget {
     this.onActionSelected,
     this.onLocationSelected,
     required this.onReportTapped,
+    this.onExpandedChanged,
   });
 
   @override
@@ -60,6 +62,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
         _searchFocusNode.unfocus();
       }
     });
+    widget.onExpandedChanged?.call(_isExpanded);
   }
 
   void _onSearchSubmitted(String query) {
