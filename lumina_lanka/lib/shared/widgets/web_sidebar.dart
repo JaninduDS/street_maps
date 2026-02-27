@@ -12,6 +12,7 @@ class WebSidebar extends StatefulWidget {
   final ValueChanged<int>? onActionSelected;
   final void Function(double lat, double lng, String displayName)? onLocationSelected;
   final VoidCallback onReportTapped;
+  final ValueChanged<bool>? onExpandedChanged;
   
   const WebSidebar({
     super.key,
@@ -19,6 +20,7 @@ class WebSidebar extends StatefulWidget {
     this.onActionSelected,
     this.onLocationSelected,
     required this.onReportTapped,
+    this.onExpandedChanged,
   });
 
   @override
@@ -58,6 +60,7 @@ class _WebSidebarState extends State<WebSidebar> {
         _searchFocusNode.unfocus();
       }
     });
+    widget.onExpandedChanged?.call(_isExpanded);
   }
 
   void _onSearchSubmitted(String query) {

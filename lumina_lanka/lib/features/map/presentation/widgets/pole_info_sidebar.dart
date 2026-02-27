@@ -8,12 +8,14 @@ class PoleInfoSidebar extends StatefulWidget {
   final Map<String, dynamic>? poleData;
   final VoidCallback onClose;
   final bool isVisible;
+  final double leftPosition;
 
   const PoleInfoSidebar({
     super.key,
     required this.poleData,
     required this.onClose,
     required this.isVisible,
+    required this.leftPosition,
   });
 
   @override
@@ -34,7 +36,7 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 350),
       curve: Curves.fastOutSlowIn,
-      left: 104, // Right outside the WebSidebar
+      left: widget.leftPosition, // Dynamically adjust based on sidebar state
       top: 16,
       bottom: 16,
       width: _currentWidth,

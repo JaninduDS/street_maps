@@ -60,6 +60,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Selected Pole Info Sidebar State
   Map<String, dynamic>? _selectedPole;
   
+  // Track WebSidebar expansion to shift PoleInfoSidebar
+  bool _isWebSidebarExpanded = false;
+  
   // Initial Center (Colombo/Maharagama area)
   static const LatLng _initialCenter = LatLng(6.9271, 79.8612);
 
@@ -1184,6 +1187,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             PoleInfoSidebar(
               poleData: _selectedPole,
               isVisible: _selectedPole != null,
+              leftPosition: _isWebSidebarExpanded ? 240 : 104, // Shift right if sidebar is expanded
               onClose: () => setState(() => _selectedPole = null),
             ),
 
@@ -1227,6 +1231,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               bottom: 0,
               child: WebSidebar(
                 selectedActionIndex: _selectedActionIndex,
+                onExpandedChanged: (expanded) {
+                  setState(() => _isWebSidebarExpanded = expanded);
+                },
                 onActionSelected: (index) {
                   setState(() => _selectedActionIndex = (_selectedActionIndex == index) ? null : index);
                 },
