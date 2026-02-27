@@ -8,6 +8,7 @@ class WebStreetView extends StatelessWidget {
   final String apiKey;
   final VoidCallback onExpand;
   final VoidCallback onDone;
+  final bool isExpanded;
 
   const WebStreetView({
     super.key,
@@ -16,6 +17,7 @@ class WebStreetView extends StatelessWidget {
     required this.apiKey,
     required this.onExpand,
     required this.onDone,
+    this.isExpanded = false,
   });
 
   @override

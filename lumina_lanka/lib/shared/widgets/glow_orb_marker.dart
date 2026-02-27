@@ -129,25 +129,17 @@ class _GlowOrbMarkerState extends State<GlowOrbMarker>
           
           return Transform.scale(
             scale: widget.isSelected ? 1.3 : scale,
-            child: Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _orbColor.withOpacity(opacity),
-                boxShadow: _glowShadow,
-                border: widget.isSelected
-                    ? Border.all(color: Colors.white, width: 2)
-                    : null,
-              ),
-              child: widget.isSelected
-                  ? Icon(
-                      Icons.lightbulb,
-                      size: widget.size * 0.6,
-                      color: Colors.black.withOpacity(0.6),
-                    )
-                  : null,
-            ),
+            child: widget.isSelected
+                ? Image.asset(
+                    'assets/icons/light_icon.png',
+                    width: widget.size * 1.5,
+                    height: widget.size * 1.5,
+                  )
+                : Image.asset(
+                    'assets/icons/light_icon.png',
+                    width: widget.size,
+                    height: widget.size,
+                  ),
           );
         },
       ),

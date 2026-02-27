@@ -13,6 +13,7 @@ class StreetViewWidget extends StatelessWidget {
   final String apiKey;
   final VoidCallback onExpand;
   final VoidCallback onDone;
+  final bool isExpanded;
 
   const StreetViewWidget({
     super.key,
@@ -21,6 +22,7 @@ class StreetViewWidget extends StatelessWidget {
     required this.apiKey,
     required this.onExpand,
     required this.onDone,
+    this.isExpanded = false,
   });
 
   @override
@@ -33,6 +35,7 @@ class StreetViewWidget extends StatelessWidget {
       apiKey: apiKey,
       onExpand: onExpand,
       onDone: onDone,
+      isExpanded: isExpanded,
     );
   }
 }

@@ -16,6 +16,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
+import 'package:lumina_lanka/features/map/presentation/widgets/pole_info_sidebar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -56,6 +57,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? _currentMapCenter;
   bool _isSavingPole = false;
   
+  // Selected Pole Info Sidebar State
+  Map<String, dynamic>? _selectedPole;
+  
   // Initial Center (Colombo/Maharagama area)
   static const LatLng _initialCenter = LatLng(6.9271, 79.8612);
 
@@ -78,6 +82,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
 
   // Street View State (Web Only)
   bool _showStreetView = false;
+  bool _isStreetViewExpanded = false;
   // TODO: Securely fetch this in production. Using from google-services for demo.
   final String _googleApiKey = const String.fromEnvironment('MAPS_API_KEY', defaultValue: 'AIzaSyDFImn7B8kTLT944M4Tga6V9m57J6C05x8');
 
@@ -130,24 +135,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: GestureDetector(
                   onTap: () {
                     HapticFeedback.lightImpact();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Street Light #$id: $status'),
-                        backgroundColor: markerColor,
-                      ),
-                    );
+                    if (mounted) {
+                      setState(() {
+                         _selectedPole = {
+                           'id': id,
+                           'status': status,
+                           'latitude': lat,
+                           'longitude': lng,
+                         };
+                      });
+                      _mapController.move(LatLng(lat, lng), 18.0);
+                    }
                   },
-                  child: Icon(
-                    Icons.lightbulb,
-                    color: markerColor,
-                    size: 30,
-                    shadows: [
-                      BoxShadow(
-                        color: markerColor.withValues(alpha: 0.6),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      )
-                    ],
+                  child: Image.asset(
+                    'assets/icons/light_icon.png',
+                    width: 30,
+                    height: 30,
                   ),
                 ),
               ),
@@ -231,22 +234,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               height: 40,
               child: GestureDetector(
                 onTap: () {
-                  HapticFeedback.lightImpact();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Street Light #${i + 100}: ${poles[i].$3}')),
-                  );
+                    HapticFeedback.lightImpact();
+                    if (mounted) {
+                      setState(() {
+                         _selectedPole = {
+                           'id': '${i + 100}',
+                           'status': poles[i].$3,
+                           'latitude': poles[i].$1,
+                           'longitude': poles[i].$2,
+                         };
+                      });
+                      _mapController.move(LatLng(poles[i].$1, poles[i].$2), 18.0);
+                    }
                 },
-                child: Icon(
-                  Icons.lightbulb,
-                  color: poles[i].$4,
-                  size: 30,
-                  shadows: [
-                    BoxShadow(
-                      color: poles[i].$4.withValues(alpha: 0.6),
-                      blurRadius: 10,
-                      spreadRadius: 2,
-                    )
-                  ],
+                child: Image.asset(
+                  'assets/icons/light_icon.png',
+                  width: 30,
+                  height: 30,
                 ),
               ),
             ),
@@ -282,6 +286,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               // Pure Satellite Image
               _currentTileUrl = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
               _currentSubdomains = [];
+            } else if (title == 'Plain') {
+              // Positron (light) by default, Dark Matter logic handled in build method dynamically
+              _currentTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
+              _currentSubdomains = ['a', 'b', 'c', 'd'];
             }
           });
         },
@@ -373,6 +381,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     final isMarkingPole = _selectedActionIndex == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Automatically switch CartoDB tile URLs based on theme for Plain mode
+    if (_currentMapMode == 'Plain') {
+      _currentTileUrl = isDark 
+          ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+          : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png';
+    }
+
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9F9),
       body: Stack(
@@ -408,6 +423,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 retinaMode: false,
                 tileSize: 256,
                 tileBuilder: (context, widget, tile) {
+                  // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
+
                   // Only apply the Dark Reader filter if in Dark Mode AND using the Standard map
                   if (isDark && _currentMapMode == 'Standard') {
                     return ColorFiltered(
@@ -474,6 +491,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       _buildModeItem('Hybrid', 'assets/icons/transit.png'),
                       const SizedBox(width: 16),
                       _buildModeItem('Satellite', 'assets/icons/satellite.png'),
+                      const SizedBox(width: 16),
+                      _buildModeItem('Plain', 'assets/icons/explore.png'), // Using explore.png as fallback
+
                     ],
                   ),
                 ),
@@ -830,94 +850,106 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // === STREET VIEW BUTTON (Web Only) ===
-                  if (kIsWeb)
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _showStreetView ? 0.0 : 1.0, // Hide when Street View is active
-                      child: IgnorePointer(
-                        ignoring: _showStreetView,
-                        child: Tooltip(
-                          message: "Street View",
-                          textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
-                          decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          preferBelow: true,
-                          child: MouseRegion(
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              onTap: () {
-                                HapticFeedback.mediumImpact();
-                                setState(() => _showStreetView = true);
-                              },
-                              child: GlassmorphicContainer(
-                                width: 48,
-                                height: 48,
-                                borderRadius: 16,
-                                blur: 14,
-                                alignment: Alignment.center,
-                                border: 1.0,
-                                linearGradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: isDark 
-                                    ? [
-                                        const Color(0xFF262626).withValues(alpha: 0.60),
-                                        const Color(0xFF262626).withValues(alpha: 0.60),
-                                      ]
-                                    : [
-                                        Colors.white.withValues(alpha: 0.85),
-                                        Colors.white.withValues(alpha: 0.75),
-                                      ],
-                                ),
-                                borderGradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: isDark
-                                    ? [
-                                        Colors.white.withValues(alpha: 0.20),
-                                        Colors.white.withValues(alpha: 0.11),
-                                      ]
-                                    : [
-                                        Colors.black.withValues(alpha: 0.15),
-                                        Colors.black.withValues(alpha: 0.05),
-                                      ],
-                                ),
-                                child: Icon(
-                                  Icons.streetview,
-                                  color: isDark ? Colors.white70 : Colors.black87,
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+
                 ],
               ),
             ),
           ),
         
-          // === STREET VIEW OVERLAY (Web Only) ===
+          // === STREET VIEW OVERLAY (Web Only) === ...
           if (kIsWeb && _showStreetView)
-            Positioned(
-              left: 24, // Consistent padding from the left edge
-              top: MediaQuery.of(context).padding.top + 80, // Allow space below the map type pill
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              bottom: _isStreetViewExpanded ? 0 : MediaQuery.of(context).padding.bottom + 24,
+              right: _isStreetViewExpanded ? 0 : 24,
+              left: _isStreetViewExpanded ? 0 : null,
+              top: _isStreetViewExpanded ? 0 : null,
               child: StreetViewWidget(
                 latitude: _currentMapCenter?.latitude ?? _initialCenter.latitude,
                 longitude: _currentMapCenter?.longitude ?? _initialCenter.longitude,
                 apiKey: _googleApiKey,
+                isExpanded: _isStreetViewExpanded,
                 onExpand: () {
-                  // The widget handles size changes internally, 
-                  // but we trigger a rebuild here if the parent needs any adjustments layout-wise.
-                  setState(() {});
+                  setState(() => _isStreetViewExpanded = !_isStreetViewExpanded);
                 },
                 onDone: () {
-                  setState(() => _showStreetView = false);
+                  setState(() {
+                    _showStreetView = false;
+                    _isStreetViewExpanded = false;
+                  });
                 },
+              ),
+            ),
+
+          // === BOTTOM RIGHT CONTROLS ===
+          if (kIsWeb)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+              right: 24,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _showStreetView ? 0.0 : 1.0, 
+                child: IgnorePointer(
+                  ignoring: _showStreetView,
+                  child: Tooltip(
+                    message: "Street View",
+                    textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    preferBelow: true,
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          setState(() => _showStreetView = true);
+                        },
+                        child: GlassmorphicContainer(
+                          width: 48,
+                          height: 48,
+                          borderRadius: 16,
+                          blur: 14,
+                          alignment: Alignment.center,
+                          border: 1.0,
+                          linearGradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isDark 
+                              ? [
+                                  const Color(0xFF262626).withValues(alpha: 0.60),
+                                  const Color(0xFF262626).withValues(alpha: 0.60),
+                                ]
+                              : [
+                                  Colors.white.withValues(alpha: 0.85),
+                                  Colors.white.withValues(alpha: 0.75),
+                                ],
+                          ),
+                          borderGradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: isDark
+                              ? [
+                                  Colors.white.withValues(alpha: 0.20),
+                                  Colors.white.withValues(alpha: 0.11),
+                                ]
+                              : [
+                                  Colors.black.withValues(alpha: 0.15),
+                                  Colors.black.withValues(alpha: 0.05),
+                                ],
+                          ),
+                          child: Icon(
+                            Icons.remove_red_eye_rounded,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           
@@ -1145,6 +1177,14 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   ),
                 ),
               ),
+            ),
+
+          // === POLE INFO SIDEBAR ===
+          if (MediaQuery.of(context).size.width >= 768)
+            PoleInfoSidebar(
+              poleData: _selectedPole,
+              isVisible: _selectedPole != null,
+              onClose: () => setState(() => _selectedPole = null),
             ),
 
           // === REPORT SIDE PANEL ===

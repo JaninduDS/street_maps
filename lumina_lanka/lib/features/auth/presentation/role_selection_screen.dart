@@ -28,19 +28,10 @@ class RoleSelectionScreen extends StatelessWidget {
               // Logo and branding
               Row(
                 children: [
-                  Container(
+                  Image.asset(
+                    'assets/icons/light_icon.png',
                     width: 48,
                     height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppColors.accentGreen,
-                      boxShadow: GlowStyles.greenGlow,
-                    ),
-                    child: const Icon(
-                      Icons.lightbulb_outline,
-                      color: Colors.black,
-                      size: 24,
-                    ),
                   ).animate().scale(
                     begin: const Offset(0, 0),
                     duration: 600.ms,
