@@ -187,32 +187,50 @@ class _MapMarkerScreenState extends ConsumerState<MapMarkerScreen> {
     );
 
     if (result != null) {
-      // Add marker to map
-      setState(() {
-        _markers.add(
-          Marker(
-            point: LatLng(result['latitude'], result['longitude']),
-            width: 32,
-            height: 32,
-            child: GlowOrbMarker(
-              status: PoleStatus.working,
-              size: 20,
-              animate: false,
-            ),
-          ),
-        );
-        _polesMarkedToday++;
-      });
+      setState(() => _isLoading = true); // Show loading state
+      
+      try {
+        // 1. Save to Supabase
+        await Supabase.instance.client.from('poles').insert({
+          'latitude': result['latitude'],
+          'longitude': result['longitude'],
+          'pole_type': result['poleType'],
+          'bulb_type': result['bulbType'],
+          'status': 'Working',
+          'created_by': Supabase.instance.client.auth.currentUser?.id,
+        });
 
-      // Show success feedback
-      if (mounted) {
-        HapticFeedback.heavyImpact();
-        AppNotifications.show(
-          context: context,
-          message: 'Pole ${result['poleId']} marked successfully!',
-          icon: CupertinoIcons.check_mark_circled_solid,
-          iconColor: AppColors.accentGreen,
-        );
+        // 2. Add marker to map locally so they see it immediately
+        setState(() {
+          _markers.add(
+            Marker(
+              point: LatLng(result['latitude'], result['longitude']),
+              width: 32,
+              height: 32,
+              child: const GlowOrbMarker(
+                status: PoleStatus.working,
+                size: 20,
+                animate: false,
+              ),
+            ),
+          );
+          _polesMarkedToday++;
+          _isLoading = false;
+        });
+
+        // 3. Show success feedback
+        if (mounted) {
+          HapticFeedback.heavyImpact();
+          AppNotifications.show(
+            context: context,
+            message: 'Pole marked successfully!',
+            icon: CupertinoIcons.check_mark_circled_solid,
+            iconColor: AppColors.accentGreen,
+          );
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        _showError('Failed to save pole: $e');
       }
     }
   }

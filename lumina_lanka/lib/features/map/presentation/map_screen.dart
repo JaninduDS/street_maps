@@ -298,47 +298,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// Save pole location to Firestore
-  Future<void> _confirmPoleLocation() async {
-    if (_currentMapCenter == null) return;
-    
-    setState(() => _isSavingPole = true);
-    
-    try {
-      await FirebaseFirestore.instance.collection('poles').add({
-        'latitude': _currentMapCenter!.latitude,
-        'longitude': _currentMapCenter!.longitude,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'Working', // Default status
-        'addedBy': 'Admin',   // Placeholder
-      });
-      
-      if (mounted) {
-        AppNotifications.show(
-          context: context,
-          message: 'Pole Marked Successfully!',
-          icon: CupertinoIcons.check_mark_circled_solid,
-          iconColor: Colors.green,
-        );
-        // Reset and show sheet again
-        setState(() {
-          _selectedActionIndex = null;
-          _isSavingPole = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        AppNotifications.show(
-          context: context,
-          message: 'Error saving pole: $e',
-          icon: CupertinoIcons.exclamationmark_triangle_fill,
-          iconColor: Colors.redAccent,
-        );
-        setState(() => _isSavingPole = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     // Watch the current user's role
@@ -1042,62 +1001,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
-            
-          // === CONFIRMATION BUTTONS (When Marking) ===
-          if (isMarkingPole)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 40, left: 20, right: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Cancel Button
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          setState(() => _selectedActionIndex = null);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade800,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Confirm Button
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: _isSavingPole ? null : () {
-                          HapticFeedback.heavyImpact();
-                          _confirmPoleLocation();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: _isSavingPole 
-                          ? const SizedBox(
-                              height: 20, 
-                              width: 20, 
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                            )
-                          : const Text('Confirm Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ),
