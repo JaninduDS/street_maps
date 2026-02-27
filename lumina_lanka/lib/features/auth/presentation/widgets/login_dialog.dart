@@ -37,19 +37,21 @@ class _LoginDialogState extends State<LoginDialog> {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: GlassmorphicContainer(
-        width: 350,
-        height: 400,
-        borderRadius: 24,
-        blur: 20,
-        alignment: Alignment.center,
-        border: 1,
-        linearGradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
-        borderGradient: LinearGradient(colors: [Colors.white.withOpacity(0.2), Colors.white.withOpacity(0.05)]),
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+      child: Material(
+        color: Colors.transparent,
+        child: GlassmorphicContainer(
+          width: 350,
+          height: 400,
+          borderRadius: 24,
+          blur: 20,
+          alignment: Alignment.center,
+          border: 1,
+          linearGradient: LinearGradient(colors: [Colors.white.withOpacity(0.1), Colors.white.withOpacity(0.05)]),
+          borderGradient: LinearGradient(colors: [Colors.white.withOpacity(0.2), Colors.white.withOpacity(0.05)]),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(CupertinoIcons.shield_lefthalf_fill, color: Color(0xFF0A84FF), size: 48),
               const SizedBox(height: 16),
@@ -70,6 +72,7 @@ class _LoginDialogState extends State<LoginDialog> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
