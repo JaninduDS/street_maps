@@ -672,38 +672,35 @@ class _TooltipWithPointerState extends State<_TooltipWithPointer> {
     _overlayEntry = OverlayEntry(
       builder: (context) {
         return Positioned(
-          width: 100,
           child: CompositedTransformFollower(
             link: _layerLink,
             showWhenUnlinked: false,
             offset: const Offset(55, 6), // Offset right the width of the icon + a bit
             child: Material(
               color: Colors.transparent,
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CustomPaint(
-                      size: const Size(8, 12),
-                      painter: _PointerPainter(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CustomPaint(
+                    size: const Size(8, 12),
+                    painter: _PointerPainter(),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF868A91), // Tooltip color mimicking screenshot
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF868A91), // Tooltip color mimicking screenshot
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        widget.message,
-                        style: const TextStyle(fontFamily: 'GoogleSansFlex', 
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
+                    child: Text(
+                      widget.message,
+                      style: const TextStyle(fontFamily: 'GoogleSansFlex', 
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
