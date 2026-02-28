@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lumina_lanka/shared/widgets/noise_overlay.dart';
 import '../../../core/utils/app_notifications.dart';
 
@@ -76,7 +77,7 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                   child: Row(
                     children: [
-                      Text(
+                      const Text(
                         'Report an Issue',
                         style: TextStyle(fontFamily: 'GoogleSansFlex', 
                           color: Colors.white,
@@ -126,6 +127,7 @@ class _ReportWizard extends StatefulWidget {
 
 class _ReportWizardState extends State<_ReportWizard> {
   int _currentStep = 0;
+  bool _isSubmitting = false;
   
   // Form Data
   String? _selectedIssue;
@@ -247,7 +249,7 @@ class _ReportWizardState extends State<_ReportWizard> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
+        const Text(
           'Before we begin...',
           style: TextStyle(fontFamily: 'GoogleSansFlex', 
             color: Colors.white,
@@ -263,15 +265,15 @@ class _ReportWizardState extends State<_ReportWizard> {
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
           ),
-          child: Column(
+          child: const Column(
             children: [
-              const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.red, size: 32),
-              const SizedBox(height: 12),
+              Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.red, size: 32),
+              SizedBox(height: 12),
               Text(
                 'Emergency Warning',
                 style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.red, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 'For downed powerlines, exposed wires, and hanging light fixtures, do NOT report here. Call the Council Emergency Line immediately at 119.',
                 style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white70, fontSize: 13, height: 1.4),
@@ -288,7 +290,7 @@ class _ReportWizardState extends State<_ReportWizard> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
+        const Text(
           "What's wrong with the streetlight?",
           style: TextStyle(fontFamily: 'GoogleSansFlex', 
             color: Colors.white,
@@ -346,7 +348,7 @@ class _ReportWizardState extends State<_ReportWizard> {
             Expanded(
               child: Text(
                 value,
-                style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15),
+                style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15),
               ),
             ),
           ],
@@ -359,7 +361,7 @@ class _ReportWizardState extends State<_ReportWizard> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
+        const Text(
           "Can we follow up with questions?",
           style: TextStyle(fontFamily: 'GoogleSansFlex', 
             color: Colors.white,
@@ -381,7 +383,7 @@ class _ReportWizardState extends State<_ReportWizard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+        Text(label, style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -392,7 +394,7 @@ class _ReportWizardState extends State<_ReportWizard> {
           child: TextField(
             controller: controller,
             maxLines: maxLines,
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white),
+            style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white),
             decoration: const InputDecoration(
               border: InputBorder.none,
               contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
@@ -407,7 +409,7 @@ class _ReportWizardState extends State<_ReportWizard> {
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        Text(
+        const Text(
           "Review details",
           style: TextStyle(fontFamily: 'GoogleSansFlex', 
             color: Colors.white,
@@ -442,9 +444,9 @@ class _ReportWizardState extends State<_ReportWizard> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label.toUpperCase(), style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
+        Text(label.toUpperCase(), style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15)),
+        Text(value, style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15)),
       ],
     );
   }
@@ -461,25 +463,52 @@ class _ReportWizardState extends State<_ReportWizard> {
           if (_currentStep > 0)
             TextButton(
               onPressed: _prevStep,
-              child: Text(
+              child: const Text(
                 'Back',
                 style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54),
               ),
             ),
           const Spacer(),
           ElevatedButton(
-            onPressed: () {
+            onPressed: _isSubmitting ? null : () async {
               if (_currentStep < 3) {
                 _nextStep();
               } else {
-                // Submit
-                AppNotifications.show(
-                  context: context,
-                  message: 'Report Submitted Successfully!',
-                  icon: CupertinoIcons.check_mark_circled_solid,
-                  iconColor: Colors.green,
-                );
-                widget.onClose();
+                // === SUBMIT TO SUPABASE ===
+                setState(() => _isSubmitting = true);
+                
+                try {
+                  await Supabase.instance.client.from('reports').insert({
+                    'issue_type': _selectedIssue ?? 'Other',
+                    'name': _nameController.text.trim().isEmpty ? 'Anonymous' : _nameController.text.trim(),
+                    'email': _emailController.text.trim(),
+                    'phone': _phoneController.text.trim(),
+                    'status': 'Pending',
+                  });
+
+                  if (mounted) {
+                    AppNotifications.show(
+                      context: context,
+                      message: 'Report Submitted Successfully!',
+                      icon: CupertinoIcons.check_mark_circled_solid,
+                      iconColor: Colors.green,
+                    );
+                    widget.onClose();
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    AppNotifications.show(
+                      context: context,
+                      message: 'Error: Could not submit report.',
+                      icon: CupertinoIcons.exclamationmark_triangle_fill,
+                      iconColor: Colors.redAccent,
+                    );
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _isSubmitting = false);
+                  }
+                }
               }
             },
             style: ElevatedButton.styleFrom(
@@ -487,10 +516,16 @@ class _ReportWizardState extends State<_ReportWizard> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), // iOS Standard Button Squircle
             ),
-            child: Text(
-              _currentStep == 3 ? 'Submit Report' : 'Continue',
-              style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            child: _isSubmitting 
+              ? const SizedBox(
+                  width: 20, 
+                  height: 20, 
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                )
+              : Text(
+                  _currentStep == 3 ? 'Submit Report' : 'Continue',
+                  style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.bold),
+                ),
           ),
         ],
       ),
