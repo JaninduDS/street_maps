@@ -1,16 +1,20 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:lumina_lanka/shared/widgets/noise_overlay.dart';
+import '../../../core/utils/app_notifications.dart';
 
 class ReportSidePanel extends StatefulWidget {
   final bool isOpen;
   final VoidCallback onClose;
+  final double? leftPosition;
 
   const ReportSidePanel({
     super.key,
     required this.isOpen,
     required this.onClose,
+    this.leftPosition,
   });
 
   @override
@@ -22,20 +26,25 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final panelWidth = (screenWidth * 0.35).clamp(400.0, 600.0);
+    
+    final isDesktop = screenWidth >= 768;
+    
+    final panelWidth = isDesktop ? 420.0 : (screenWidth * 0.35).clamp(400.0, 600.0);
     // Increased panel height to 85% to accommodate wizard content on landscape screens (Web)
-    final panelHeight = (screenHeight * 0.85).clamp(400.0, 800.0);
+    final panelHeight = isDesktop ? null : (screenHeight * 0.85).clamp(400.0, 800.0);
     
     // Bottom padding to avoid home indicator
-    final bottomPadding = MediaQuery.of(context).padding.bottom + 16;
+    final bottomPadding = isDesktop ? 16.0 : MediaQuery.of(context).padding.bottom + 16.0;
+    
+    final targetLeft = isDesktop ? (widget.leftPosition ?? 16.0) : 16.0;
 
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 400),
       curve: Curves.fastOutSlowIn,
-      top: null, // Don't constrain top
-      height: panelHeight, // Fix height
+      top: isDesktop ? 16.0 : null, // Desktop anchors to top
+      height: panelHeight, // Fix height on mobile, stretch on desktop
       bottom: bottomPadding,
-      left: widget.isOpen ? 16 : -panelWidth - 20, // Slide from Left
+      left: widget.isOpen ? targetLeft : -panelWidth - 20, // Slide from Left
       width: panelWidth,
       child: GlassmorphicContainer(
         width: panelWidth,
@@ -75,7 +84,7 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                   child: Row(
                     children: [
-                      Text(
+                      const Text(
                         'Report an Issue',
                         style: TextStyle(fontFamily: 'GoogleSansFlex', 
                           color: Colors.white,
@@ -103,7 +112,7 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
                 
                 // Content (Wizard)
                 Expanded(
-                  child: _ReportWizard(onClose: widget.onClose),
+                  child: ReportContent(onClose: widget.onClose),
                 ),
               ],
             ),
@@ -114,190 +123,161 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
   }
 }
 
-class _ReportWizard extends StatefulWidget {
+class ReportContent extends StatefulWidget {
   final VoidCallback onClose;
 
-  const _ReportWizard({required this.onClose});
+  const ReportContent({super.key, required this.onClose});
 
   @override
-  State<_ReportWizard> createState() => _ReportWizardState();
+  State<ReportContent> createState() => _ReportContentState();
 }
 
-class _ReportWizardState extends State<_ReportWizard> {
-  int _currentStep = 0;
+class _ReportContentState extends State<ReportContent> {
+  bool _isSubmitting = false;
   
   // Form Data
   String? _selectedIssue;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _detailsController = TextEditingController();
-  bool _notifyResolved = false;
 
   final List<String> _issues = [
     'Single light out',
     'Streetlight is flickering',
     'Streetlight on during the day',
     'Light is dim',
-    'Two or more lights out in a row',
+    'Two or more lights out in row',
     'Pole is leaning',
     'Pole is damaged',
   ];
-
-  void _nextStep() {
-    setState(() => _currentStep++);
-  }
-
-  void _prevStep() {
-    setState(() {
-      if (_currentStep > 0) _currentStep--;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Progress Steps
-        _buildProgressIndicator(),
-        
         Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _buildStepContent(),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: [
+              _buildFlightStyleCard(
+                title: "Emergency Warning",
+                titleColor: const Color(0xFFEF5350), // Red Title
+                icon: CupertinoIcons.exclamationmark_triangle_fill,
+                iconColor: const Color(0xFFEF5350),
+                content: const Text(
+                  'For downed powerlines, exposed wires, and hanging light fixtures, do NOT report here. Call the Council Emergency Line immediately at 119.',
+                  style: TextStyle(
+                    fontFamily: 'GoogleSansFlex',
+                    color: Colors.white70,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildFlightStyleCard(
+                title: "Issue Details",
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "What's wrong with the streetlight?",
+                      style: TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ..._issues.map((issue) => _buildRadioOption(issue)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildFlightStyleCard(
+                title: "Contact Information",
+                content: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Can we follow up with questions?",
+                      style: TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _buildTextField("Full Name", _nameController),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _buildTextField("Email", _emailController)),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildTextField("Phone (Opt)", _phoneController)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24), // Extra padding at bottom
+            ],
           ),
         ),
-
-        // Bottom Actions
+        // Bottom Action Bar
         _buildBottomActions(),
       ],
     );
   }
 
-  Widget _buildProgressIndicator() {
+  Widget _buildFlightStyleCard({
+    required String title,
+    Color titleColor = Colors.white,
+    IconData? icon,
+    Color? iconColor,
+    required Widget content,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 28),
-      child: Row(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1E).withValues(alpha: 0.9), // Dark card surface
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (int i = 0; i < 4; i++) ...[
-            // Circle
-            _buildStepCircle(i),
-            
-            // Connecting Line (if not last)
-            if (i < 3)
-              Expanded(
-                child: Container(
-                  height: 2,
-                  color: i < _currentStep ? const Color(0xFF0A84FF) : Colors.white10,
+          // Card Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, color: iconColor ?? titleColor, size: 20),
+                  const SizedBox(width: 8),
+                ],
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontFamily: 'GoogleSansFlex',
+                    color: titleColor,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-          ],
+              ],
+            ),
+          ),
+          // Divider
+          Container(height: 1, color: Colors.white.withValues(alpha: 0.05)),
+          // Card Content
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: content,
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStepCircle(int index) {
-    final isActive = index <= _currentStep;
-    final isCompleted = index < _currentStep;
-
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF0A84FF) : const Color(0xFF2C2C2E),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: isActive ? const Color(0xFF0A84FF) : Colors.white24,
-          width: 1.5,
-        ),
-      ),
-      child: Center(
-        child: isCompleted
-            ? const Icon(Icons.check, size: 16, color: Colors.white)
-            : Text(
-                '${index + 1}',
-                style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                  color: isActive ? Colors.white : Colors.white54,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildStepContent() {
-    switch (_currentStep) {
-      case 0:
-        return _buildIntroStep();
-      case 1:
-        return _buildIssueStep();
-      case 2:
-        return _buildContactStep();
-      case 3:
-        return _buildReviewStep();
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  Widget _buildIntroStep() {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          'Before we begin...',
-          style: TextStyle(fontFamily: 'GoogleSansFlex', 
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2C2C2E),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-          ),
-          child: Column(
-            children: [
-              const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.red, size: 32),
-              const SizedBox(height: 12),
-              Text(
-                'Emergency Warning',
-                style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.red, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'For downed powerlines, exposed wires, and hanging light fixtures, do NOT report here. Call the Council Emergency Line immediately at 119.',
-                style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white70, fontSize: 13, height: 1.4),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIssueStep() {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          "What's wrong with the streetlight?",
-          style: TextStyle(fontFamily: 'GoogleSansFlex', 
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 20),
-        ..._issues.map((issue) => _buildRadioOption(issue)),
-      ],
     );
   }
 
@@ -306,21 +286,20 @@ class _ReportWizardState extends State<_ReportWizard> {
     return GestureDetector(
       onTap: () => setState(() => _selectedIssue = value),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+          color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.15) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF0A84FF) : Colors.white12,
-            width: 1,
+            color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
           children: [
             Container(
-              width: 20,
-              height: 20,
+              width: 18,
+              height: 18,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
@@ -345,7 +324,12 @@ class _ReportWizardState extends State<_ReportWizard> {
             Expanded(
               child: Text(
                 value,
-                style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15),
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex', 
+                  color: isSelected ? Colors.white : Colors.white70, 
+                  fontSize: 15,
+                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                ),
               ),
             ),
           ],
@@ -354,144 +338,114 @@ class _ReportWizardState extends State<_ReportWizard> {
     );
   }
 
-  Widget _buildContactStep() {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          "Can we follow up with questions?",
-          style: TextStyle(fontFamily: 'GoogleSansFlex', 
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 24),
-        _buildTextField("Full name", _nameController),
-        const SizedBox(height: 16),
-        _buildTextField("Email address", _emailController),
-        const SizedBox(height: 16),
-        _buildTextField("Phone number (optional)", _phoneController),
-      ],
-    );
-  }
-
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.black26,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.white12),
-          ),
-          child: TextField(
-            controller: controller,
-            maxLines: maxLines,
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white),
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C2C2E).withValues(alpha: 0.5), // Inner dark field
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontFamily: 'GoogleSansFlex',
+              color: Colors.white54,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReviewStep() {
-    return ListView(
-      padding: const EdgeInsets.all(24),
-      children: [
-        Text(
-          "Review details",
-          style: TextStyle(fontFamily: 'GoogleSansFlex', 
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
+          const SizedBox(height: 4),
+          TextField(
+            controller: controller,
+            maxLines: maxLines,
+            style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+            decoration: const InputDecoration(
+              isDense: true,
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.zero,
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildReviewItem("Issue", _selectedIssue ?? "Not selected"),
-              const Divider(color: Colors.white10, height: 24),
-              _buildReviewItem("Name", _nameController.text.isEmpty ? "Anonymous" : _nameController.text),
-              const SizedBox(height: 12),
-              _buildReviewItem("Contact", _emailController.text.isEmpty ? "None" : _emailController.text),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReviewItem(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label.toUpperCase(), style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(value, style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 15)),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _buildBottomActions() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
       decoration: BoxDecoration(
-        color: Colors.transparent, // Make transparent to show glass background
+        color: const Color(0xFF1C1C1E).withValues(alpha: 0.95), // Solid dock area
         border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       ),
-      child: Row(
-        children: [
-          if (_currentStep > 0)
-            TextButton(
-              onPressed: _prevStep,
-              child: Text(
-                'Back',
-                style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54),
-              ),
-            ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: () {
-              if (_currentStep < 3) {
-                _nextStep();
-              } else {
-                // Submit
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Report Submitted Successfully!'),
-                    backgroundColor: Colors.green,
-                  ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 54,
+        child: ElevatedButton(
+          onPressed: _isSubmitting || _selectedIssue == null ? null : () async {
+            // === SUBMIT TO SUPABASE ===
+            setState(() => _isSubmitting = true);
+            
+            try {
+              await Supabase.instance.client.from('reports').insert({
+                'issue_type': _selectedIssue,
+                'name': _nameController.text.trim().isEmpty ? 'Anonymous' : _nameController.text.trim(),
+                'email': _emailController.text.trim(),
+                'phone': _phoneController.text.trim(),
+                'status': 'Pending',
+              });
+
+              if (mounted) {
+                AppNotifications.show(
+                  context: context,
+                  message: 'Report Submitted Successfully!',
+                  icon: CupertinoIcons.check_mark_circled_solid,
+                  iconColor: Colors.green,
                 );
                 widget.onClose();
               }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A84FF), // iOS Blue Button
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)), // iOS Standard Button Squircle
-            ),
-            child: Text(
-              _currentStep == 3 ? 'Submit Report' : 'Continue',
-              style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            } catch (e) {
+              if (mounted) {
+                AppNotifications.show(
+                  context: context,
+                  message: 'Error: Could not submit report.',
+                  icon: CupertinoIcons.exclamationmark_triangle_fill,
+                  iconColor: Colors.redAccent,
+                );
+              }
+            } finally {
+              if (mounted) {
+                setState(() => _isSubmitting = false);
+              }
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF9E47FF), // Purple accent from flight UI reference
+            disabledBackgroundColor: const Color(0xFF9E47FF).withValues(alpha: 0.3),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(27)), // Pill shape
+            elevation: 0,
           ),
-        ],
+          child: _isSubmitting 
+            ? const SizedBox(
+                width: 24, 
+                height: 24, 
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
+              )
+            : const Text(
+                'Submit Report',
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+        ),
       ),
     );
   }

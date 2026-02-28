@@ -2,11 +2,16 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class PoleInfoSidebar extends StatefulWidget {
+import '../../../../core/auth/auth_provider.dart';
+import '../../../../core/utils/app_notifications.dart';
+
+class PoleInfoSidebar extends ConsumerStatefulWidget {
   final Map<String, dynamic>? poleData;
   final VoidCallback onClose;
+  final VoidCallback onReportTapped;
   final bool isVisible;
   final double leftPosition;
 
@@ -14,15 +19,16 @@ class PoleInfoSidebar extends StatefulWidget {
     super.key,
     required this.poleData,
     required this.onClose,
+    required this.onReportTapped,
     required this.isVisible,
     required this.leftPosition,
   });
 
   @override
-  State<PoleInfoSidebar> createState() => _PoleInfoSidebarState();
+  ConsumerState<PoleInfoSidebar> createState() => _PoleInfoSidebarState();
 }
 
-class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
+class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
   // To handle the opening animation
   double get _currentWidth {
     if (!widget.isVisible || widget.poleData == null) {
@@ -33,6 +39,9 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the authentication state to get the user's role
+    final authState = ref.watch(authProvider);
+
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 350),
       curve: Curves.fastOutSlowIn,
@@ -106,7 +115,7 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
 
                           const SizedBox(height: 24),
 
-                          // Action Buttons Row (Directions, Call, Website - Apple Maps style)
+                          // Action Buttons Row
                           Row(
                             children: [
                               Expanded(
@@ -121,17 +130,59 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Expanded(
-                                child: _buildActionButton(
-                                  label: 'Report',
-                                  icon: CupertinoIcons.exclamationmark_triangle_fill,
-                                  color: Colors.white.withValues(alpha: 0.1),
-                                  textColor: Colors.white,
-                                  onTap: () {
-                                    // Placeholder
-                                  },
+                              
+                              // If Electrician AND pole is broken, show Resolve instead of Report
+                              if (authState.role == AppRole.electrician && widget.poleData!['status'] != 'Working')
+                                Expanded(
+                                  child: _buildActionButton(
+                                    label: 'Resolve',
+                                    icon: CupertinoIcons.checkmark_seal_fill,
+                                    color: const Color(0xFF34C759), // Green
+                                    textColor: Colors.white,
+                                    onTap: () async {
+                                      try {
+                                        // 1. Update Supabase
+                                        await Supabase.instance.client
+                                            .from('poles')
+                                            .update({'status': 'Working'})
+                                            .eq('id', widget.poleData!['id']);
+                                            
+                                        // 2. Show Success
+                                        if (mounted) {
+                                          AppNotifications.show(
+                                            context: context,
+                                            message: 'Pole marked as Working!',
+                                            icon: CupertinoIcons.check_mark_circled_solid,
+                                            iconColor: const Color(0xFF34C759),
+                                          );
+                                          widget.onClose();
+                                        }
+                                      } catch (e) {
+                                        if (mounted) {
+                                          AppNotifications.show(
+                                            context: context,
+                                            message: 'Error: $e',
+                                            icon: CupertinoIcons.exclamationmark_triangle_fill,
+                                            iconColor: Colors.redAccent,
+                                          );
+                                        }
+                                      }
+                                    },
+                                  ),
+                                )
+                              else
+                                Expanded(
+                                  child: _buildActionButton(
+                                    label: 'Report',
+                                    icon: CupertinoIcons.exclamationmark_triangle_fill,
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    textColor: Colors.white,
+                                    onTap: () {
+                                      widget.onReportTapped();
+                                    },
+                                  ),
                                 ),
-                              ),
+
                               const SizedBox(width: 8),
                               Expanded(
                                 child: _buildActionButton(
@@ -141,8 +192,10 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
                                   textColor: Colors.white,
                                   onTap: () {
                                     Clipboard.setData(ClipboardData(text: widget.poleData!['id'].toString()));
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('ID Copied')),
+                                    AppNotifications.show(
+                                      context: context,
+                                      message: 'ID Copied',
+                                      icon: CupertinoIcons.doc_on_clipboard_fill,
                                     );
                                   },
                                 ),
@@ -157,7 +210,7 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
 
                           const SizedBox(height: 16),
                           
-                          // Quick Info (Hours / Accepts style from image)
+                          // Quick Info
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -210,9 +263,9 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
                           const SizedBox(height: 24),
 
                           // About Section
-                          Text(
+                          const Text(
                             'About',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'GoogleSansFlex',
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
@@ -240,9 +293,9 @@ class _PoleInfoSidebarState extends State<PoleInfoSidebar> {
                           const SizedBox(height: 24),
 
                           // Details Section
-                          Text(
+                          const Text(
                             'Details',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'GoogleSansFlex',
                               fontSize: 20,
                               fontWeight: FontWeight.w600,

@@ -11,7 +11,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/utils/app_notifications.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -121,11 +124,11 @@ class _MapMarkerScreenState extends ConsumerState<MapMarkerScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.accentRed,
-      ),
+    AppNotifications.show(
+      context: context,
+      message: message,
+      icon: CupertinoIcons.exclamationmark_triangle_fill,
+      iconColor: AppColors.accentRed,
     );
   }
 
@@ -185,46 +188,50 @@ class _MapMarkerScreenState extends ConsumerState<MapMarkerScreen> {
     );
 
     if (result != null) {
-      // Add marker to map
-      setState(() {
-        _markers.add(
-          Marker(
-            point: LatLng(result['latitude'], result['longitude']),
-            width: 32,
-            height: 32,
-            child: GlowOrbMarker(
-              status: PoleStatus.working,
-              size: 20,
-              animate: false,
-            ),
-          ),
-        );
-        _polesMarkedToday++;
-      });
+      setState(() => _isLoading = true); // Show loading state
+      
+      try {
+        // 1. Save to Supabase
+        await Supabase.instance.client.from('poles').insert({
+          'latitude': result['latitude'],
+          'longitude': result['longitude'],
+          'pole_type': result['poleType'],
+          'bulb_type': result['bulbType'],
+          'status': 'Working',
+          'created_by': Supabase.instance.client.auth.currentUser?.id,
+        });
 
-      // Show success feedback
-      if (mounted) {
-        HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: AppColors.accentGreen,
-                    boxShadow: GlowStyles.greenGlow,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text('Pole ${result['poleId']} marked successfully!'),
-              ],
+        // 2. Add marker to map locally so they see it immediately
+        setState(() {
+          _markers.add(
+            Marker(
+              point: LatLng(result['latitude'], result['longitude']),
+              width: 32,
+              height: 32,
+              child: const GlowOrbMarker(
+                status: PoleStatus.working,
+                size: 20,
+                animate: false,
+              ),
             ),
-            backgroundColor: AppColors.bgSecondary,
-          ),
-        );
+          );
+          _polesMarkedToday++;
+          _isLoading = false;
+        });
+
+        // 3. Show success feedback
+        if (mounted) {
+          HapticFeedback.heavyImpact();
+          AppNotifications.show(
+            context: context,
+            message: 'Pole marked successfully!',
+            icon: CupertinoIcons.check_mark_circled_solid,
+            iconColor: AppColors.accentGreen,
+          );
+        }
+      } catch (e) {
+        setState(() => _isLoading = false);
+        _showError('Failed to save pole: $e');
       }
     }
   }

@@ -16,18 +16,22 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:convert';
 import 'dart:math';
 import 'package:http/http.dart' as http;
-import 'package:lumina_lanka/features/map/presentation/widgets/pole_info_sidebar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+
+// Local Imports
+import '../../../core/auth/auth_provider.dart';
+import '../../../core/theme/theme_provider.dart';
 import '../../../shared/widgets/unified_glass_sheet.dart';
-import '../../report/presentation/report_side_panel.dart';
-import '../../report/presentation/report_issue_dialog.dart';
 import '../../../shared/widgets/web_sidebar.dart';
-import '../../../core/theme/theme_provider.dart'; // Added theme provider import
+import '../../map_marker/presentation/map_marker_screen.dart';
+import '../../report/presentation/report_side_panel.dart';
+import 'widgets/pole_info_sidebar.dart';
+import 'widgets/search_wards_sidebar.dart';
 import 'widgets/street_view_widget.dart';
+import '../../../core/utils/app_notifications.dart';
 
 /// Main map screen with OpenStreetMap and Unified Bottom Sheet
 class MapScreen extends ConsumerStatefulWidget {
@@ -63,6 +67,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   // Track WebSidebar expansion to shift PoleInfoSidebar
   bool _isWebSidebarExpanded = false;
   
+  // Search Wards Sidebar State
+  bool _isSearchWardsOpen = false;
+  
   // Initial Center (Colombo/Maharagama area)
   static const LatLng _initialCenter = LatLng(6.9271, 79.8612);
 
@@ -81,7 +88,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _isSearchActive = false; // Tracks if search results are shown (submitted)
 
   // Report State
-  bool _showReportModal = false; // New modal state
+  // Removed _showReportModal
 
   // Street View State (Web Only)
   bool _showStreetView = false;
@@ -216,53 +223,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
-  /// Add demo pole markers
-  void _addDemoPoles() {
-    // Demo data
-    final poles = [
-      (6.8472, 79.9266, 'Working', Colors.blue),
-      (6.8485, 79.9280, 'Working', Colors.blue),
-      (6.8460, 79.9250, 'Reported', Colors.red),
-      (6.8490, 79.9240, 'Working', Colors.blue),
-      (6.8455, 79.9275, 'Maintenance', Colors.orange),
-    ];
-
-    if (mounted) {
-      setState(() {
-        for (int i = 0; i < poles.length; i++) {
-          _markers.add(
-            Marker(
-              point: LatLng(poles[i].$1, poles[i].$2),
-              width: 40,
-              height: 40,
-              child: GestureDetector(
-                onTap: () {
-                    HapticFeedback.lightImpact();
-                    if (mounted) {
-                      setState(() {
-                         _selectedPole = {
-                           'id': '${i + 100}',
-                           'status': poles[i].$3,
-                           'latitude': poles[i].$1,
-                           'longitude': poles[i].$2,
-                         };
-                      });
-                      _mapController.move(LatLng(poles[i].$1, poles[i].$2), 18.0);
-                    }
-                },
-                child: Image.asset(
-                  'assets/icons/light_icon.png',
-                  width: 30,
-                  height: 30,
-                ),
-              ),
-            ),
-          );
-        }
-      });
-    }
-  }
-
   /// Toggle Map Modes Popup
   void _toggleMapModePopup() {
     setState(() => _isMapModeOpen = !_isMapModeOpen);
@@ -337,49 +297,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
 
-  /// Save pole location to Firestore
-  Future<void> _confirmPoleLocation() async {
-    if (_currentMapCenter == null) return;
-    
-    setState(() => _isSavingPole = true);
-    
-    try {
-      await FirebaseFirestore.instance.collection('poles').add({
-        'latitude': _currentMapCenter!.latitude,
-        'longitude': _currentMapCenter!.longitude,
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'Working', // Default status
-        'addedBy': 'Admin',   // Placeholder
-      });
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pole Marked Successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Reset and show sheet again
-        setState(() {
-          _selectedActionIndex = null;
-          _isSavingPole = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error saving pole: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        setState(() => _isSavingPole = false);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Watch the current user's role
+    final authState = ref.watch(authProvider);
+    
     // Check if in "Mark Pole" mode (Index 1)
     final isMarkingPole = _selectedActionIndex == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -398,6 +320,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
+              backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9F9),
               initialCenter: _initialCenter,
               initialZoom: 15.0,
               minZoom: 7.0, // Prevent zooming out too far
@@ -425,6 +348,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 subdomains: _currentSubdomains,
                 retinaMode: false,
                 tileSize: 256,
+                keepBuffer: 3,
+                panBuffer: 2,
                 tileBuilder: (context, widget, tile) {
                   // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
 
@@ -452,7 +377,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           
           // === BLUR OVERLAY (Visible when Report Modal is Open) ===
-          if (_showReportModal)
+          if (_isReportPanelOpen)
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -469,7 +394,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               right: 80, // Offset to the left of the buttons
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
-                opacity: _showReportModal ? 0.0 : 1.0,
+                opacity: _isReportPanelOpen ? 0.0 : 1.0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
@@ -510,7 +435,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             right: 16,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: _showReportModal ? 0.0 : 1.0,
+              opacity: _isReportPanelOpen ? 0.0 : 1.0,
               child: Column(
                 children: [
                   // === MAP, LOCATION & THEME PILL ===
@@ -859,7 +784,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
           ),
         
-          // === STREET VIEW OVERLAY (Web Only) === ...
+          // === STREET VIEW OVERLAY (Web Only) ===
           if (kIsWeb && _showStreetView)
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
@@ -957,6 +882,37 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           
+          // === MARK POLE BUTTON (Map Marker Role Only) ===
+          if (authState.role == AppRole.marker && !isMarkingPole)
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+              right: kIsWeb ? 90 : 24, // Avoid overlapping StreetView button on web
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _isReportPanelOpen ? 0.0 : 1.0,
+                child: IgnorePointer(
+                  ignoring: _isReportPanelOpen,
+                  child: FloatingActionButton.extended(
+                    backgroundColor: const Color(0xFF0A84FF),
+                    onPressed: () {
+                      HapticFeedback.mediumImpact();
+                      // Navigate to the Map Marker Screen
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (_) => const MapMarkerScreen())
+                      );
+                    },
+                    icon: const Icon(Icons.add_location_alt, color: Colors.white),
+                    label: const Text(
+                      "Mark Pole", 
+                      style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.bold)
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
           // === REPORT BUTTON (Bottom Left/Center) - Mobile Only ===
           if (MediaQuery.of(context).size.width < 768)
             AnimatedPositioned(
@@ -965,18 +921,18 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               left: 24, // Left aligned, below search panel
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
-                opacity: _isSearchActive || _showReportModal ? 0.0 : 1.0,
+                opacity: _isSearchActive || _isReportPanelOpen ? 0.0 : 1.0,
                 child: IgnorePointer(
-                  ignoring: _isSearchActive || _showReportModal,
+                  ignoring: _isSearchActive || _isReportPanelOpen,
                   child: GestureDetector(
                   onTap: () {
                     HapticFeedback.mediumImpact();
-                    setState(() => _showReportModal = true);
+                    setState(() => _isReportPanelOpen = true);
                   },
                   child: GlassmorphicContainer(
                     width: 180, // Increased width
                     height: 52,
-                    borderRadius: 16, // Apple-like squircle
+                    borderRadius: 100, // Apple-like squircle
                     blur: 35,
                     alignment: Alignment.center,
                     border: 1.5,
@@ -984,27 +940,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        const Color(0xFFA56969).withValues(alpha: 0.8), // Dusty rose/brown
-                        const Color(0xFF8D5A5A).withValues(alpha: 0.9),
+                        const Color(0xFF1E2C3A).withValues(alpha: 0.95), // Deep navy
+                        const Color(0xFF16202A).withValues(alpha: 0.95),
                       ],
                     ),
                     borderGradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Colors.white.withValues(alpha: 0.2),
+                        Colors.white.withValues(alpha: 0.1),
                         Colors.white.withValues(alpha: 0.05),
                       ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.white, size: 20),
+                        const Icon(CupertinoIcons.exclamationmark_bubble, color: Color(0xFF4A90E2), size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          'Report Issue',
+                          'Report an Issue',
                           style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                            color: Colors.white,
+                            color: const Color(0xFF4A90E2),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1051,62 +1007,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
               ),
             ),
-            
-          // === CONFIRMATION BUTTONS (When Marking) ===
-          if (isMarkingPole)
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 40, left: 20, right: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Cancel Button
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          HapticFeedback.mediumImpact();
-                          setState(() => _selectedActionIndex = null);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade800,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: const Text('Cancel', style: TextStyle(color: Colors.white)),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Confirm Button
-                    Expanded(
-                      flex: 2,
-                      child: ElevatedButton(
-                        onPressed: _isSavingPole ? null : () {
-                          HapticFeedback.heavyImpact();
-                          _confirmPoleLocation();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                        ),
-                        child: _isSavingPole 
-                          ? const SizedBox(
-                              height: 20, 
-                              width: 20, 
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                            )
-                          : const Text('Confirm Location', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
           
           // === UNIFIED BOTTOM SHEET (Normal Mode) ===
           // Hide if Marking Pole OR Map Mode is Open.
@@ -1119,9 +1019,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               alignment: Alignment.topLeft, // Anchor to Top Left
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
-                opacity: _showReportModal ? 0.0 : 1.0,
+                opacity: _isReportPanelOpen ? 0.0 : 1.0,
                 child: IgnorePointer(
-                  ignoring: _showReportModal,
+                  ignoring: _isReportPanelOpen,
                   child: Padding(
                     // Pad from the top and left to float
                     padding: EdgeInsets.only(
@@ -1132,8 +1032,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start, // Align left
                       children: [
-                        // Removed Lumina Title Text
-
                         // Unified Search Sheet
                         UnifiedGlassSheet(
                           width: MediaQuery.of(context).size.width * 0.35, // Desktop/iPad sidebar width
@@ -1151,11 +1049,11 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                             _mapController.move(LatLng(lat, lng), 16.0);
                             FocusManager.instance.primaryFocus?.unfocus();
                             
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Moved to: $displayName'),
-                                backgroundColor: const Color(0xFF0A84FF),
-                              ),
+                            AppNotifications.show(
+                              context: context,
+                              message: 'Moved to: $displayName',
+                              icon: CupertinoIcons.location_solid,
+                              iconColor: const Color(0xFF0A84FF),
                             );
                           },
                         ),
@@ -1190,39 +1088,51 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               isVisible: _selectedPole != null,
               leftPosition: _isWebSidebarExpanded ? 240 : 104, // Shift right if sidebar is expanded
               onClose: () => setState(() => _selectedPole = null),
+              onReportTapped: () => setState(() => _isReportPanelOpen = true),
+            ),
+
+          // === SEARCH WARDS SIDEBAR ===
+          if (MediaQuery.of(context).size.width >= 768)
+            SearchWardsSidebar(
+              isVisible: _isSearchWardsOpen,
+              leftPosition: _isWebSidebarExpanded ? 240 : 104,
+              onClose: () => setState(() => _isSearchWardsOpen = false),
+              onLocationSelected: (lat, lng, displayName) {
+                _mapController.move(LatLng(lat, lng), 16.0);
+                setState(() => _isSearchWardsOpen = false);
+                AppNotifications.show(
+                  context: context,
+                  message: 'Moved to: $displayName',
+                  icon: CupertinoIcons.location_solid,
+                  iconColor: const Color(0xFF0A84FF),
+                );
+              },
             ),
 
           // === REPORT SIDE PANEL ===
-          ReportSidePanel(
-            isOpen: _isReportPanelOpen,
-            onClose: () => setState(() => _isReportPanelOpen = false),
+          Builder(
+            builder: (context) {
+              final isDesktop = MediaQuery.of(context).size.width >= 768;
+              double baseLeft = _isWebSidebarExpanded ? 240 : 104;
+              
+              if (isDesktop) {
+                if (_selectedPole != null) {
+                  baseLeft += 420 + 16;
+                } else if (_isSearchWardsOpen) {
+                  baseLeft += 420 + 16;
+                }
+              }
+              
+              return ReportSidePanel(
+                isOpen: _isReportPanelOpen,
+                leftPosition: isDesktop ? baseLeft : null,
+                onClose: () => setState(() => _isReportPanelOpen = false),
+              );
+            },
           ),
 
           // === REPORT MODAL ===
-          if (_showReportModal)
-            Positioned.fill(
-              child: Stack(
-                children: [
-                   // Scrim to dismiss
-                   GestureDetector(
-                     onTap: () {
-                         // Optional: Allow dismissing by tapping outside?
-                         // setState(() => _showReportModal = false);
-                     },
-                     child: Container(color: Colors.transparent),
-                   ),
-                   Center(
-                     child: ReportIssueDialog(
-                       onClose: () => setState(() => _showReportModal = false),
-                       onContinue: () {
-                         // Handle continue
-                         HapticFeedback.lightImpact();
-                       },
-                     ),
-                   ),
-                ],
-              ),
-            ),
+          // Removed: ReportIssueDialog is deprecated in favor of ReportSidePanel
           
           // === WEB SIDEBAR (Wide Screens Only) ===
           if (MediaQuery.of(context).size.width >= 768)
@@ -1240,15 +1150,22 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 },
                 onLocationSelected: (lat, lng, displayName) {
                   _mapController.move(LatLng(lat, lng), 16.0);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Moved to: $displayName'),
-                      backgroundColor: const Color(0xFF0A84FF),
-                    ),
+                  AppNotifications.show(
+                    context: context,
+                    message: 'Moved to: $displayName',
+                    icon: CupertinoIcons.location_solid,
+                    iconColor: const Color(0xFF0A84FF),
                   );
                 },
                 onReportTapped: () {
-                  setState(() => _showReportModal = true);
+                  setState(() => _isReportPanelOpen = true);
+                },
+                onSearchTapped: () {
+                  setState(() {
+                    _isSearchWardsOpen = !_isSearchWardsOpen;
+                    // Close pole info if search is opening
+                    if (_isSearchWardsOpen) _selectedPole = null;
+                  });
                 },
               ),
             ),
@@ -1256,6 +1173,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
   }
+  
   Widget _buildActionButtons(bool isDark) {
     final actions = [
       ('Public User', CupertinoIcons.person_2_fill),
@@ -1330,5 +1248,3 @@ class TrianglePainter extends CustomPainter {
   @override
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
-
-
