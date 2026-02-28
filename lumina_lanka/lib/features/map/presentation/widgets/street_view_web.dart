@@ -13,6 +13,7 @@ class WebStreetView extends StatefulWidget {
   final VoidCallback onExpand;
   final VoidCallback onDone;
   final bool isExpanded;
+  final bool isSidebarExpanded;
 
   const WebStreetView({
     super.key,
@@ -22,6 +23,7 @@ class WebStreetView extends StatefulWidget {
     required this.onExpand,
     required this.onDone,
     this.isExpanded = false,
+    this.isSidebarExpanded = false,
   });
 
   @override
@@ -72,72 +74,80 @@ class _WebStreetViewState extends State<WebStreetView> {
                 child: Listener(
                   onPointerDown: (_) => widget.onExpand(),
                   child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF262626).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.15)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    widget.isExpanded ? CupertinoIcons.arrow_down_right_arrow_up_left : CupertinoIcons.arrow_up_left_arrow_down_right,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-
-            // Done Button
-            MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Listener(
-                onPointerDown: (_) => widget.onDone(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF262626).withOpacity(0.95),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.15)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: const Text(
-                    'Done',
-                    style: TextStyle(
-                      fontFamily: 'GoogleSansFlex',
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF262626).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.15)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      widget.isExpanded
+                          ? CupertinoIcons.arrow_down_right_arrow_up_left
+                          : CupertinoIcons.arrow_up_left_arrow_down_right,
                       color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
+                      size: 20,
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+
+              // Done Button
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Listener(
+                  onPointerDown: (_) => widget.onDone(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF262626).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.15)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: const Text(
+                      'Done',
+                      style: TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
       const SizedBox(height: 12), // Space between buttons and floating box
         
         // The Map Container
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOutCubic,
-          width: widget.isExpanded ? MediaQuery.of(context).size.width - 48 : 340,
+          // When expanded: perfectly center in the available space between left sidebar and right FABs.
+          // leftGap = widget.isSidebarExpanded ? 264.0 : 96.0; rightGap = 88.0
+          width: widget.isExpanded 
+              ? MediaQuery.of(context).size.width - (widget.isSidebarExpanded ? 264.0 : 96.0) - 88.0
+              : min(340.0, MediaQuery.of(context).size.width - 120),
           // Subtract the height of the buttons + spacing when expanded to avoid overflow
-          height: widget.isExpanded ? MediaQuery.of(context).size.height - 120 : 220,
+          height: widget.isExpanded 
+              ? MediaQuery.of(context).size.height - 120 
+              : min(220.0, MediaQuery.of(context).size.height - 180),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
             borderRadius: BorderRadius.circular(widget.isExpanded ? 16 : 20), // Apple-like squircle

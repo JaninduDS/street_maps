@@ -9,6 +9,7 @@ class WebStreetView extends StatelessWidget {
   final VoidCallback onExpand;
   final VoidCallback onDone;
   final bool isExpanded;
+  final bool isSidebarExpanded;
 
   const WebStreetView({
     super.key,
@@ -18,6 +19,7 @@ class WebStreetView extends StatelessWidget {
     required this.onExpand,
     required this.onDone,
     this.isExpanded = false,
+    this.isSidebarExpanded = false,
   });
 
   @override

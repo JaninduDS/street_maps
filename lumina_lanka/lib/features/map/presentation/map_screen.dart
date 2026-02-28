@@ -320,6 +320,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
+              backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9F9),
               initialCenter: _initialCenter,
               initialZoom: 15.0,
               minZoom: 7.0, // Prevent zooming out too far
@@ -347,6 +348,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 subdomains: _currentSubdomains,
                 retinaMode: false,
                 tileSize: 256,
+                keepBuffer: 3,
+                panBuffer: 2,
                 tileBuilder: (context, widget, tile) {
                   // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
 
@@ -786,15 +789,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOutCubic,
-              bottom: _isStreetViewExpanded ? 0 : MediaQuery.of(context).padding.bottom + 24,
-              right: _isStreetViewExpanded ? 0 : 24,
-              left: _isStreetViewExpanded ? 0 : null,
-              top: _isStreetViewExpanded ? 0 : null,
+              bottom: _isStreetViewExpanded ? 24 : MediaQuery.of(context).padding.bottom + 24,
+              right: _isStreetViewExpanded ? 88 : 88, // Pulls the expanded view left to clear the FABs
+              left: null,
+              top: null,
               child: StreetViewWidget(
                 latitude: _currentMapCenter?.latitude ?? _initialCenter.latitude,
                 longitude: _currentMapCenter?.longitude ?? _initialCenter.longitude,
                 apiKey: _googleApiKey,
                 isExpanded: _isStreetViewExpanded,
+                isSidebarExpanded: _isWebSidebarExpanded,
                 onExpand: () {
                   setState(() => _isStreetViewExpanded = !_isStreetViewExpanded);
                 },
