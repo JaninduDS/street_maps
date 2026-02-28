@@ -12,6 +12,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/utils/app_notifications.dart';
 import '../../features/auth/presentation/widgets/login_dialog.dart';
+import '../../features/dashboard/presentation/council_dashboard.dart';
+import '../../features/tasks/presentation/electrician_tasks_screen.dart';
 
 class WebSidebar extends ConsumerStatefulWidget {
   final int? selectedActionIndex;
@@ -451,10 +453,10 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
             icon: CupertinoIcons.chart_bar_alt_fill,
             title: 'Council Dashboard',
             onTap: () {
-              AppNotifications.show(
-                context: context,
-                message: 'Dashboard coming soon!',
-                icon: CupertinoIcons.time,
+              // Navigate to the new Dashboard screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CouncilDashboard()),
               );
             },
             color: const Color(0xFF34C759), 
@@ -468,10 +470,10 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
             icon: CupertinoIcons.bolt_fill,
             title: 'My Tasks',
             onTap: () {
-              AppNotifications.show(
-                context: context,
-                message: 'Tasks coming soon!',
-                icon: CupertinoIcons.time,
+              // Navigate to the Electrician Tasks screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ElectricianTasksScreen()),
               );
             },
             color: const Color(0xFFFFCC00), 
