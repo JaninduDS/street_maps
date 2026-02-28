@@ -11,6 +11,9 @@ dependencies:
     sdk: flutter
   vector_map_tiles: 8.0.0
 
+  # Charts
+  fl_chart: ^0.66.0
+
   # UI & Icons
   cupertino_icons: ^1.0.8
   flutter_svg: ^2.0.10+1
