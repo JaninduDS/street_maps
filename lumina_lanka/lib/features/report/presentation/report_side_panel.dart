@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:lumina_lanka/shared/widgets/noise_overlay.dart';
 import '../../../core/utils/app_notifications.dart';
 
 class ReportSidePanel extends StatefulWidget {
@@ -22,6 +21,13 @@ class ReportSidePanel extends StatefulWidget {
 }
 
 class _ReportSidePanelState extends State<ReportSidePanel> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -29,7 +35,7 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
     
     final isDesktop = screenWidth >= 768;
     
-    final panelWidth = isDesktop ? 420.0 : (screenWidth * 0.35).clamp(400.0, 600.0);
+    final panelWidth = isDesktop ? 440.0 : (screenWidth * 0.35).clamp(400.0, 600.0);
     // Increased panel height to 85% to accommodate wizard content on landscape screens (Web)
     final panelHeight = isDesktop ? null : (screenHeight * 0.85).clamp(400.0, 800.0);
     
@@ -49,74 +55,81 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
       child: GlassmorphicContainer(
         width: panelWidth,
         height: double.infinity,
-        borderRadius: 38, // Standard Apple Large Sheet Radius
-        blur: 35, // Match UnifiedGlassSheet Apple-style blur
-        alignment: Alignment.center,
-        border: 1.5,
+        borderRadius: 24,
+        blur: 14,
+        alignment: Alignment.topCenter,
+        border: 1.0,
         linearGradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: const Alignment(-1.0, -1.0),
+          end: const Alignment(1.0, 1.0),
           colors: [
-            const Color(0xFF2C2C2E).withValues(alpha: 0.65), // Elevated Card
-            const Color(0xFF1C1C1E).withValues(alpha: 0.75), // Elevated Base
+            const Color(0xFF1E1E1E).withValues(alpha: 0.75),
+            const Color(0xFF1E1E1E).withValues(alpha: 0.85),
           ],
         ),
         borderGradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withValues(alpha: 0.1),
+            Colors.white.withValues(alpha: 0.2),
             Colors.white.withValues(alpha: 0.05),
           ],
         ),
-        child: Stack(
-          children: [
-            // Noise Overlay
-            const Positioned.fill(
-              child: NoiseOverlay(opacity: 0.08, scale: 0.5),
-            ),
-            
-            // Content
-            Column(
-              children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Report an Issue',
-                        style: TextStyle(fontFamily: 'GoogleSansFlex', 
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: RawScrollbar(
+            controller: _scrollController,
+            thumbVisibility: true,
+            radius: const Radius.circular(4),
+            thickness: 6,
+            thumbColor: Colors.white.withValues(alpha: 0.3),
+            padding: const EdgeInsets.only(right: 4, top: 8, bottom: 8),
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 16),
+                    // Back Button
+                    GestureDetector(
+                      onTap: widget.onClose,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.chevron_back,
                           color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w600,
+                          size: 18,
                         ),
                       ),
-                      const Spacer(),
-                      GestureDetector(
-                        onTap: widget.onClose,
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(CupertinoIcons.xmark,
-                              color: Colors.white70, size: 18),
-                        ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Header Title
+                    const Text(
+                      'Report an Issue',
+                      style: TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Report Content (inline, not nested widget)
+                    ReportContent(onClose: widget.onClose),
+                    const SizedBox(height: 32),
+                  ],
                 ),
-                const Divider(height: 1, color: Colors.white10),
-                
-                // Content (Wizard)
-                Expanded(
-                  child: ReportContent(onClose: widget.onClose),
-                ),
-              ],
+              ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -137,9 +150,13 @@ class _ReportContentState extends State<ReportContent> {
   
   // Form Data
   String? _selectedIssue;
+  String? _selectedDirection;
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _poleNumberController = TextEditingController();
+  final _additionalInfoController = TextEditingController();
 
   final List<String> _issues = [
     'Single light out',
@@ -154,80 +171,152 @@ class _ReportContentState extends State<ReportContent> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        _buildFlightStyleCard(
+          title: "Emergency Warning",
+          titleColor: const Color(0xFFEF5350),
+          icon: CupertinoIcons.exclamationmark_triangle_fill,
+          iconColor: const Color(0xFFEF5350),
+          content: const Text(
+            'For downed powerlines, exposed wires, and hanging light fixtures, do NOT report here. Call the Council Emergency Line immediately at 119.',
+            style: TextStyle(
+              fontFamily: 'GoogleSansFlex',
+              color: Colors.white70,
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildFlightStyleCard(
+          title: "Issue Details",
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildFlightStyleCard(
-                title: "Emergency Warning",
-                titleColor: const Color(0xFFEF5350), // Red Title
-                icon: CupertinoIcons.exclamationmark_triangle_fill,
-                iconColor: const Color(0xFFEF5350),
-                content: const Text(
-                  'For downed powerlines, exposed wires, and hanging light fixtures, do NOT report here. Call the Council Emergency Line immediately at 119.',
-                  style: TextStyle(
-                    fontFamily: 'GoogleSansFlex',
-                    color: Colors.white70,
-                    fontSize: 14,
-                    height: 1.4,
-                  ),
+              const Text(
+                "What's wrong with the streetlight?",
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 16),
-              _buildFlightStyleCard(
-                title: "Issue Details",
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "What's wrong with the streetlight?",
-                      style: TextStyle(
-                        fontFamily: 'GoogleSansFlex',
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ..._issues.map((issue) => _buildRadioOption(issue)),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildFlightStyleCard(
-                title: "Contact Information",
-                content: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Can we follow up with questions?",
-                      style: TextStyle(
-                        fontFamily: 'GoogleSansFlex',
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    _buildTextField("Full Name", _nameController),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(child: _buildTextField("Email", _emailController)),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildTextField("Phone (Opt)", _phoneController)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24), // Extra padding at bottom
+              ..._issues.map((issue) => _buildRadioOption(issue)),
             ],
           ),
         ),
-        // Bottom Action Bar
-        _buildBottomActions(),
+        const SizedBox(height: 16),
+        _buildFlightStyleCard(
+          title: "Streetlight Details",
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTextField("Location / Address", _locationController),
+              const SizedBox(height: 12),
+              _buildTextField("Pole Number (if visible)", _poleNumberController),
+              const SizedBox(height: 16),
+              const Text(
+                "Direction of affected streetlight",
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildDirectionOption('Left', CupertinoIcons.arrow_left),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildDirectionOption('Right', CupertinoIcons.arrow_right),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Additional information (optional)",
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: Colors.white70,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 8),
+              _buildTextField("e.g. landmarks, side of street", _additionalInfoController, maxLines: 3),
+              const SizedBox(height: 16),
+              // Upload Photo Button
+              GestureDetector(
+                onTap: () {
+                  // TODO: Implement photo upload
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(CupertinoIcons.camera_fill, color: Colors.white.withValues(alpha: 0.6), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Upload a Photo (optional)',
+                        style: TextStyle(
+                          fontFamily: 'GoogleSansFlex',
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildFlightStyleCard(
+          title: "Contact Information",
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Can we follow up with questions?",
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildTextField("Full Name", _nameController),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _buildTextField("Email", _emailController)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildTextField("Phone (Opt)", _phoneController)),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Submit Button
+        _buildSubmitButton(),
       ],
     );
   }
@@ -338,11 +427,44 @@ class _ReportContentState extends State<ReportContent> {
     );
   }
 
+  Widget _buildDirectionOption(String label, IconData icon) {
+    final isSelected = _selectedDirection == label;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedDirection = label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.15) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF0A84FF).withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: isSelected ? const Color(0xFF0A84FF) : Colors.white54, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: isSelected ? Colors.white : Colors.white70,
+                fontSize: 15,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2E).withValues(alpha: 0.5), // Inner dark field
+        color: const Color(0xFF2C2C2E).withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
@@ -359,15 +481,22 @@ class _ReportContentState extends State<ReportContent> {
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
           TextField(
             controller: controller,
             maxLines: maxLines,
-            style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+            cursorColor: Colors.white,
+            style: const TextStyle(
+              fontFamily: 'GoogleSansFlex',
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              height: 1.4,
+            ),
             decoration: const InputDecoration(
               isDense: true,
               border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
+              contentPadding: EdgeInsets.symmetric(vertical: 4),
             ),
           ),
         ],
@@ -375,77 +504,70 @@ class _ReportContentState extends State<ReportContent> {
     );
   }
 
-  Widget _buildBottomActions() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1C1C1E).withValues(alpha: 0.95), // Solid dock area
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: ElevatedButton(
-          onPressed: _isSubmitting || _selectedIssue == null ? null : () async {
-            // === SUBMIT TO SUPABASE ===
-            setState(() => _isSubmitting = true);
-            
-            try {
-              await Supabase.instance.client.from('reports').insert({
-                'issue_type': _selectedIssue,
-                'name': _nameController.text.trim().isEmpty ? 'Anonymous' : _nameController.text.trim(),
-                'email': _emailController.text.trim(),
-                'phone': _phoneController.text.trim(),
-                'status': 'Pending',
-              });
+  Widget _buildSubmitButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 54,
+      child: ElevatedButton(
+        onPressed: _isSubmitting || _selectedIssue == null ? null : () async {
+          // === SUBMIT TO SUPABASE ===
+          setState(() => _isSubmitting = true);
+          
+          try {
+            await Supabase.instance.client.from('reports').insert({
+              'issue_type': _selectedIssue,
+              'name': _nameController.text.trim().isEmpty ? 'Anonymous' : _nameController.text.trim(),
+              'email': _emailController.text.trim(),
+              'phone': _phoneController.text.trim(),
+              'status': 'Pending',
+            });
 
-              if (mounted) {
-                AppNotifications.show(
-                  context: context,
-                  message: 'Report Submitted Successfully!',
-                  icon: CupertinoIcons.check_mark_circled_solid,
-                  iconColor: Colors.green,
-                );
-                widget.onClose();
-              }
-            } catch (e) {
-              if (mounted) {
-                AppNotifications.show(
-                  context: context,
-                  message: 'Error: Could not submit report.',
-                  icon: CupertinoIcons.exclamationmark_triangle_fill,
-                  iconColor: Colors.redAccent,
-                );
-              }
-            } finally {
-              if (mounted) {
-                setState(() => _isSubmitting = false);
-              }
+            if (mounted) {
+              AppNotifications.show(
+                context: context,
+                message: 'Report Submitted Successfully!',
+                icon: CupertinoIcons.check_mark_circled_solid,
+                iconColor: Colors.green,
+              );
+              widget.onClose();
             }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF9E47FF), // Purple accent from flight UI reference
-            disabledBackgroundColor: const Color(0xFF9E47FF).withValues(alpha: 0.3),
-            padding: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(27)), // Pill shape
-            elevation: 0,
-          ),
-          child: _isSubmitting 
-            ? const SizedBox(
-                width: 24, 
-                height: 24, 
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
-              )
-            : const Text(
-                'Submit Report',
-                style: TextStyle(
-                  fontFamily: 'GoogleSansFlex',
-                  color: Colors.white,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+          } catch (e) {
+            if (mounted) {
+              AppNotifications.show(
+                context: context,
+                message: 'Error: Could not submit report.',
+                icon: CupertinoIcons.exclamationmark_triangle_fill,
+                iconColor: Colors.redAccent,
+              );
+            }
+          } finally {
+            if (mounted) {
+              setState(() => _isSubmitting = false);
+            }
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF9E47FF),
+          disabledBackgroundColor: const Color(0xFF9E47FF).withValues(alpha: 0.3),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(27)),
+          elevation: 0,
         ),
+        child: _isSubmitting 
+          ? const SizedBox(
+              width: 24, 
+              height: 24, 
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
+            )
+          : const Text(
+              'Submit Report',
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
       ),
     );
   }

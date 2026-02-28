@@ -221,17 +221,6 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
           isActive: false,
         ),
         
-        const SizedBox(height: 16),
-        
-        // Report an Issue
-        _buildSidebarIconButton(
-          icon: CupertinoIcons.exclamationmark_bubble,
-          tooltip: 'Report an Issue',
-          onTap: () {
-             widget.onReportTapped(); 
-          },
-          isActive: false,
-        ),
         
         const Spacer(),
 
@@ -438,14 +427,6 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        // EVERYONE sees Report an Issue
-        _buildNavTile(
-          icon: CupertinoIcons.exclamationmark_bubble,
-          title: 'Report an Issue',
-          onTap: widget.onReportTapped,
-          color: const Color(0xFF4A90E2), 
-        ),
-        
         // ONLY COUNCIL sees Dashboard
         if (authState.role == AppRole.council) ...[
           const SizedBox(height: 8),
