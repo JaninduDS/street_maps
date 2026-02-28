@@ -214,32 +214,6 @@ class _ReportContentState extends State<ReportContent> {
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildTextField("Location / Address", _locationController),
-              const SizedBox(height: 12),
-              _buildTextField("Pole Number (if visible)", _poleNumberController),
-              const SizedBox(height: 16),
-              const Text(
-                "Direction of affected streetlight",
-                style: TextStyle(
-                  fontFamily: 'GoogleSansFlex',
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildDirectionOption('Left', CupertinoIcons.arrow_left),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildDirectionOption('Right', CupertinoIcons.arrow_right),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
               const Text(
                 "Additional information (optional)",
                 style: TextStyle(

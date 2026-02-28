@@ -342,34 +342,34 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             children: [
               // Dynamic Tile Layer - Clean OSM Bright style with Dark Reader filter
-              TileLayer(
-                urlTemplate: _currentTileUrl,
-                userAgentPackageName: 'com.maharagama.lumina_lanka',
-                subdomains: _currentSubdomains,
-                retinaMode: false,
-                tileSize: 256,
-                keepBuffer: 3,
-                panBuffer: 2,
-                tileBuilder: (context, widget, tile) {
-                  // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
-
-                  // Only apply the Dark Reader filter if in Dark Mode AND using the Standard map
-                  if (isDark && _currentMapMode == 'Standard') {
-                    return ColorFiltered(
-                      // This specific matrix inverts colors AND rotates hue by 180deg
-                      // It turns white roads black, blue water dark blue, and green parks dark green
-                      colorFilter: const ColorFilter.matrix([
-                         0.333, -0.667, -0.667, 0, 255,
-                        -0.667,  0.333, -0.667, 0, 255,
-                        -0.667, -0.667,  0.333, 0, 255,
-                         0,      0,      0,     1, 0,
-                      ]),
-                      child: widget,
-                    );
-                  }
-                  return widget;
-                },
-              ),
+              if (isDark && _currentMapMode == 'Standard')
+                ColorFiltered(
+                  colorFilter: const ColorFilter.matrix([
+                     0.333, -0.667, -0.667, 0, 255,
+                    -0.667,  0.333, -0.667, 0, 255,
+                    -0.667, -0.667,  0.333, 0, 255,
+                     0,      0,      0,     1, 0,
+                  ]),
+                  child: TileLayer(
+                    urlTemplate: _currentTileUrl,
+                    userAgentPackageName: 'com.maharagama.lumina_lanka',
+                    subdomains: _currentSubdomains,
+                    retinaMode: false,
+                    tileSize: 256,
+                    keepBuffer: 2,
+                    panBuffer: 1,
+                  ),
+                )
+              else
+                TileLayer(
+                  urlTemplate: _currentTileUrl,
+                  userAgentPackageName: 'com.maharagama.lumina_lanka',
+                  subdomains: _currentSubdomains,
+                  retinaMode: false,
+                  tileSize: 256,
+                  keepBuffer: 2,
+                  panBuffer: 1,
+                ),
               
               // Markers Layer
               MarkerLayer(markers: _markers),
@@ -1087,7 +1087,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               poleData: _selectedPole,
               isVisible: _selectedPole != null,
               leftPosition: _isWebSidebarExpanded ? 240 : 104, // Shift right if sidebar is expanded
-              onClose: () => setState(() => _selectedPole = null),
+              onClose: () => setState(() {
+                _selectedPole = null;
+                _isReportPanelOpen = false;
+              }),
               onReportTapped: () => setState(() => _isReportPanelOpen = true),
             ),
 
