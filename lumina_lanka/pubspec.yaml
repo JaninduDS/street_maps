@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  vector_map_tiles: ^7.0.0
+    vector_tile_renderer: ^7.0.0
 
   # UI & Icons
   cupertino_icons: ^1.0.8

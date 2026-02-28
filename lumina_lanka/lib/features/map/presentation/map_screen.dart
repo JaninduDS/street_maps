@@ -320,6 +320,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           FlutterMap(
             mapController: _mapController,
             options: MapOptions(
+              backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9F9),
               initialCenter: _initialCenter,
               initialZoom: 15.0,
               minZoom: 7.0, // Prevent zooming out too far
@@ -347,6 +348,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 subdomains: _currentSubdomains,
                 retinaMode: false,
                 tileSize: 256,
+                keepBuffer: 3,
+                panBuffer: 2,
                 tileBuilder: (context, widget, tile) {
                   // Plain mode handles its dark/light theme directly via the cartoDB URL strings.
 
