@@ -37,6 +37,51 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
     return 420.0; 
   }
 
+  List<dynamic> _reports = [];
+  bool _isLoadingReports = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.poleData != null) {
+      _fetchReports();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant PoleInfoSidebar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Check if the ID changed OR if the sidebar just became visible again
+    final idChanged = widget.poleData?['id'] != oldWidget.poleData?['id'];
+    final becameVisible = widget.isVisible && !oldWidget.isVisible;
+    
+    if ((idChanged || becameVisible) && widget.poleData != null) {
+      _fetchReports();
+    }
+  }
+
+  Future<void> _fetchReports() async {
+    setState(() => _isLoadingReports = true);
+    try {
+      final data = await Supabase.instance.client
+          .from('reports')
+          .select()
+          .eq('pole_id', widget.poleData!['id'])
+          .order('created_at', ascending: false);
+          
+      if (mounted) {
+        setState(() {
+          _reports = data;
+          _isLoadingReports = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching reports for pole: $e');
+      if (mounted) setState(() => _isLoadingReports = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Watch the authentication state to get the user's role
@@ -93,7 +138,7 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
 
                           // Header Title & Subtitle
                           Text(
-                            'Street Light #${widget.poleData!['id']}',
+                            'Street Light #${widget.poleData!['id'].toString().substring(0, 5)}',
                             style: const TextStyle(
                               fontFamily: 'GoogleSansFlex',
                               fontSize: 28,
@@ -318,6 +363,111 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 24),
+
+                          // === RECENT REPORTS SECTION ===
+                          const Text(
+                            'Recent Reports',
+                            style: TextStyle(
+                              fontFamily: 'GoogleSansFlex',
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          
+                          if (_isLoadingReports)
+                            const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(color: Color(0xFF0A84FF)),
+                              ),
+                            )
+                          else if (_reports.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                'No issues reported for this pole.',
+                                style: TextStyle(
+                                  fontFamily: 'GoogleSansFlex',
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 15,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          else
+                            Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                padding: EdgeInsets.zero,
+                                itemCount: _reports.length,
+                                separatorBuilder: (context, index) => _buildDivider(),
+                                itemBuilder: (context, index) {
+                                  final report = _reports[index];
+                                  final isPending = report['status'] == 'Pending';
+                                  
+                                  return Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              isPending ? CupertinoIcons.exclamationmark_triangle_fill : CupertinoIcons.check_mark_circled_solid,
+                                              color: isPending ? const Color(0xFFFF3B30) : const Color(0xFF34C759),
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                report['issue_type'] ?? 'Unknown Issue',
+                                                style: const TextStyle(
+                                                  fontFamily: 'GoogleSansFlex',
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              report['status'],
+                                              style: TextStyle(
+                                                fontFamily: 'GoogleSansFlex',
+                                                color: isPending ? const Color(0xFFFF3B30) : const Color(0xFF34C759),
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          'Reported by ${report['name'] ?? 'Anonymous'}',
+                                          style: TextStyle(
+                                            fontFamily: 'GoogleSansFlex',
+                                            color: Colors.white.withOpacity(0.6),
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
 
                           const SizedBox(height: 32),
                         ],

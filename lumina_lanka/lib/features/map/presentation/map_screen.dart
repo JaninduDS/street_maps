@@ -123,7 +123,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             final lat = pole['latitude'] as double;
             final lng = pole['longitude'] as double;
             final status = pole['status'] as String;
-            final id = pole['id'].toString().substring(0, 5); // Short ID for display
+            final fullId = pole['id'].toString();
 
             // Determine color based on status
             Color markerColor;
@@ -149,7 +149,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     if (mounted) {
                       setState(() {
                          _selectedPole = {
-                           'id': id,
+                           'id': fullId,
                            'status': status,
                            'latitude': lat,
                            'longitude': lng,
