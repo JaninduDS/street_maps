@@ -32,6 +32,7 @@ import 'widgets/pole_info_sidebar.dart';
 import 'widgets/search_wards_sidebar.dart';
 import 'widgets/street_view_widget.dart';
 import '../../../core/utils/app_notifications.dart';
+import '../../profile/presentation/profile_screen.dart';
 
 /// Main map screen with OpenStreetMap and Unified Bottom Sheet
 class MapScreen extends ConsumerStatefulWidget {
@@ -427,11 +428,62 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
               ),
             ),
-              
+          
+          // === PROFILE BUTTON (Top Right) ===
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            right: 16,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: _isReportPanelOpen ? 0.0 : 1.0,
+              child: IgnorePointer(
+                ignoring: _isReportPanelOpen,
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                    );
+                  },
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1C1E).withOpacity(0.8) : Colors.white.withOpacity(0.8),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: BackdropFilter(
+                        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: Icon(
+                          CupertinoIcons.person_crop_circle_fill,
+                          color: authState.user != null ? const Color(0xFF0A84FF) : Colors.grey,
+                          size: 28,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
           // === FLOATING ACTION BUTTONS (Right Side) ===
           AnimatedPositioned(
             duration: const Duration(milliseconds: 200),
-            top: MediaQuery.of(context).padding.top + 16,
+            top: MediaQuery.of(context).padding.top + 80,
             right: 16,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
@@ -1129,6 +1181,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               return ReportSidePanel(
                 isOpen: _isReportPanelOpen,
                 leftPosition: isDesktop ? baseLeft : null,
+                poleId: _selectedPole?['id'],
                 onClose: () => setState(() => _isReportPanelOpen = false),
               );
             },

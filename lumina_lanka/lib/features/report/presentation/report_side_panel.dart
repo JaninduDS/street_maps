@@ -8,12 +8,14 @@ class ReportSidePanel extends StatefulWidget {
   final bool isOpen;
   final VoidCallback onClose;
   final double? leftPosition;
+  final String? poleId;
 
   const ReportSidePanel({
     super.key,
     required this.isOpen,
     required this.onClose,
     this.leftPosition,
+    this.poleId,
   });
 
   @override
@@ -123,7 +125,7 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
                     ),
                     const SizedBox(height: 24),
                     // Report Content (inline, not nested widget)
-                    ReportContent(onClose: widget.onClose),
+                    ReportContent(onClose: widget.onClose, poleId: widget.poleId),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -138,8 +140,9 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
 
 class ReportContent extends StatefulWidget {
   final VoidCallback onClose;
+  final String? poleId;
 
-  const ReportContent({super.key, required this.onClose});
+  const ReportContent({super.key, required this.onClose, this.poleId});
 
   @override
   State<ReportContent> createState() => _ReportContentState();
@@ -494,7 +497,15 @@ class _ReportContentState extends State<ReportContent> {
               'email': _emailController.text.trim(),
               'phone': _phoneController.text.trim(),
               'status': 'Pending',
+              'pole_id': widget.poleId,
             });
+
+            if (widget.poleId != null) {
+              await Supabase.instance.client
+                  .from('poles')
+                  .update({'status': 'Reported'})
+                  .eq('id', widget.poleId!);
+            }
 
             if (mounted) {
               AppNotifications.show(

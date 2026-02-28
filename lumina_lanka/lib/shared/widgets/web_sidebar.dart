@@ -14,6 +14,7 @@ import '../../core/utils/app_notifications.dart';
 import '../../features/auth/presentation/widgets/login_dialog.dart';
 import '../../features/dashboard/presentation/council_dashboard.dart';
 import '../../features/tasks/presentation/electrician_tasks_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
 
 class WebSidebar extends ConsumerStatefulWidget {
   final int? selectedActionIndex;
@@ -230,12 +231,10 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
           tooltip: isLoggedIn ? 'Log Out' : 'Staff Login',
           onTap: () {
             if (isLoggedIn) {
-              ref.read(authProvider.notifier).signOut();
+              // OPEN PROFILE INSTEAD OF LOGGING OUT
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
             } else {
-              showDialog(
-                context: context,
-                builder: (context) => const LoginDialog(),
-              );
+              showDialog(context: context, builder: (context) => const LoginDialog());
             }
           },
           isActive: false,
@@ -472,12 +471,10 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
       onTap: () {
         HapticFeedback.lightImpact();
         if (isLoggedIn) {
-          ref.read(authProvider.notifier).signOut();
+          // OPEN PROFILE INSTEAD OF LOGGING OUT
+          Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
         } else {
-          showDialog(
-            context: context,
-            builder: (context) => const LoginDialog(),
-          );
+          showDialog(context: context, builder: (context) => const LoginDialog());
         }
       },
       child: Container(
