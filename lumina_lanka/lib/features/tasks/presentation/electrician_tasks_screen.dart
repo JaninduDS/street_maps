@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/app_notifications.dart';
 import '../../../shared/widgets/glass_card.dart';
@@ -83,6 +84,8 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
@@ -92,9 +95,9 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
           icon: const Icon(CupertinoIcons.back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'My Tasks',
-          style: TextStyle(
+        title: Text(
+          l10n.myTasks,
+          style: const TextStyle(
             fontFamily: 'GoogleSansFlex',
             color: Colors.white,
             fontWeight: FontWeight.w600,
@@ -104,7 +107,7 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.accentBlue))
           : _pendingTasks.isEmpty
-              ? _buildEmptyState()
+              ? _buildEmptyState(l10n)
               : ListView.builder(
                   padding: const EdgeInsets.all(24),
                   itemCount: _pendingTasks.length,
@@ -188,9 +191,9 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
                                   ),
                                 ),
                                 icon: const Icon(CupertinoIcons.checkmark_seal_fill, size: 18),
-                                label: const Text(
-                                  'Mark as Resolved',
-                                  style: TextStyle(
+                                label: Text(
+                                  l10n.markAsResolved,
+                                  style: const TextStyle(
                                     fontFamily: 'GoogleSansFlex',
                                     fontWeight: FontWeight.bold,
                                     fontSize: 15,
@@ -207,7 +210,7 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l10n) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -225,9 +228,9 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'All Caught Up!',
-            style: TextStyle(
+          Text(
+            l10n.allCaughtUp,
+            style: const TextStyle(
               fontFamily: 'GoogleSansFlex',
               color: Colors.white,
               fontSize: 24,
@@ -236,10 +239,10 @@ class _ElectricianTasksScreenState extends State<ElectricianTasksScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'There are no pending tasks right now.',
-            style: TextStyle(
+            l10n.noPendingTasks,
+            style: const TextStyle(
               fontFamily: 'GoogleSansFlex',
-              color: Colors.white.withOpacity(0.5),
+              color: Colors.white54,
               fontSize: 16,
             ),
           ),

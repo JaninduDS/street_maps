@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/glass_card.dart';
+
 
 class CouncilDashboard extends StatefulWidget {
   const CouncilDashboard({super.key});
@@ -108,6 +110,8 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
@@ -117,9 +121,9 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
           icon: const Icon(CupertinoIcons.back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Council Dashboard',
-          style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
+        title: Text(
+          l10n.councilDashboard,
+          style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
       body: _isLoading
@@ -134,7 +138,7 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
                     children: [
                       Expanded(
                         child: _buildStatCard(
-                          title: 'Total Poles',
+                          title: l10n.totalPoles,
                           value: _totalPoles.toString(),
                           icon: CupertinoIcons.lightbulb_fill,
                           color: AppColors.accentBlue,
@@ -143,7 +147,7 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildStatCard(
-                          title: 'Pending Repairs',
+                          title: l10n.pendingRepairs,
                           value: _pendingIssues.toString(),
                           icon: CupertinoIcons.exclamationmark_triangle_fill,
                           color: AppColors.accentRed,
@@ -158,31 +162,31 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(flex: 2, child: _buildLineChartCard()),
+                        Expanded(flex: 2, child: _buildLineChartCard(l10n)),
                         const SizedBox(width: 24),
-                        Expanded(flex: 1, child: _buildPieChartCard()),
+                        Expanded(flex: 1, child: _buildPieChartCard(l10n)),
                       ],
                     )
                   else ...[
-                    _buildLineChartCard(),
+                    _buildLineChartCard(l10n),
                     const SizedBox(height: 24),
-                    _buildPieChartCard(),
+                    _buildPieChartCard(l10n),
                   ],
 
                   const SizedBox(height: 32),
 
                   // === RECENT REPORTS LIST ===
-                  const Text(
-                    'Recent Reports',
-                    style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+                  Text(
+                    l10n.recentReports,
+                    style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 16),
                   GlassCard(
                     padding: EdgeInsets.zero,
                     child: _recentReports.isEmpty
-                        ? const Padding(
-                            padding: EdgeInsets.all(32.0),
-                            child: Center(child: Text('No recent reports.', style: TextStyle(color: Colors.white54))),
+                        ? Padding(
+                            padding: const EdgeInsets.all(32.0),
+                            child: Center(child: Text(l10n.noReportsFound, style: const TextStyle(color: Colors.white54))),
                           )
                         : ListView.separated(
                             shrinkWrap: true,
@@ -256,13 +260,13 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
     );
   }
 
-  Widget _buildPieChartCard() {
+  Widget _buildPieChartCard(AppLocalizations l10n) {
     return GlassCard(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Network Health', style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(l10n.networkHealth, style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 24),
           SizedBox(
             height: 200,
@@ -293,9 +297,9 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _buildLegendItem(AppColors.accentGreen, 'Working'),
+              _buildLegendItem(AppColors.accentGreen, l10n.working),
               const SizedBox(width: 16),
-              _buildLegendItem(AppColors.accentRed, 'Faulty'),
+              _buildLegendItem(AppColors.accentRed, l10n.faulty),
             ],
           )
         ],
@@ -303,13 +307,13 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
     );
   }
 
-  Widget _buildLineChartCard() {
+  Widget _buildLineChartCard(AppLocalizations l10n) {
     return GlassCard(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Reports (Last 7 Days)', style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(l10n.reportsLast7Days, style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 32),
           SizedBox(
             height: 220,

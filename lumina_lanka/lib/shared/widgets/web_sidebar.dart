@@ -7,14 +7,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../l10n/app_localizations.dart'; // <-- TRANSLATION IMPORT
 
 // Import Auth Provider and Login Dialog
 import '../../core/auth/auth_provider.dart';
 import '../../core/utils/app_notifications.dart';
 import '../../features/auth/presentation/widgets/login_dialog.dart';
 import '../../features/dashboard/presentation/council_dashboard.dart';
+import '../../features/profile/presentation/profile_screen.dart'; // <-- PROFILE IMPORT
 import '../../features/tasks/presentation/electrician_tasks_screen.dart';
-import '../../features/profile/presentation/profile_screen.dart';
 
 class WebSidebar extends ConsumerStatefulWidget {
   final int? selectedActionIndex;
@@ -46,7 +47,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
   Timer? _debounce;
   bool _isSearchActive = false;
   
-  bool _isExpanded = false; // Add collapsed/expanded state
+  bool _isExpanded = false;
 
   @override
   void initState() {
@@ -190,6 +191,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
   Widget _buildCollapsedContent() {
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState.user != null;
+    final l10n = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -215,26 +217,27 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
         // Search
         _buildSidebarIconButton(
           icon: CupertinoIcons.search,
-          tooltip: 'Search',
+          tooltip: l10n.search,
           onTap: () {
             widget.onSearchTapped?.call();
           },
           isActive: false,
         ),
         
-        
         const Spacer(),
 
         // Bottom Staff Login (Collapsed)
         _buildSidebarIconButton(
-          icon: isLoggedIn ? CupertinoIcons.square_arrow_right : CupertinoIcons.person_solid,
-          tooltip: isLoggedIn ? 'Log Out' : 'Staff Login',
+          icon: isLoggedIn ? CupertinoIcons.person_crop_circle_fill : CupertinoIcons.person_solid,
+          tooltip: isLoggedIn ? l10n.profile : l10n.staffLogin,
           onTap: () {
             if (isLoggedIn) {
-              // OPEN PROFILE INSTEAD OF LOGGING OUT
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
             } else {
-              showDialog(context: context, builder: (context) => const LoginDialog());
+              showDialog(
+                context: context,
+                builder: (context) => const LoginDialog(),
+              );
             }
           },
           isActive: false,
@@ -283,6 +286,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
   }
 
   Widget _buildExpandedContent() {
+    final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       physics: const NeverScrollableScrollPhysics(),
       child: SizedBox(
@@ -311,9 +315,9 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                   const SizedBox(width: 12),
                   const Icon(CupertinoIcons.map_fill, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  const Text(
-                    "Maps",
-                    style: TextStyle(fontFamily: 'GoogleSansFlex', 
+                  Text(
+                    l10n.mapScreenTitle,
+                    style: const TextStyle(fontFamily: 'GoogleSansFlex', 
                       color: Colors.white,
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -364,6 +368,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
 
   Widget _buildSearchBar() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       height: 44,
@@ -388,7 +393,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
               focusNode: _searchFocusNode,
               style: TextStyle(fontFamily: 'GoogleSansFlex', color: isDark ? Colors.white : Colors.black87, fontSize: 13),
               decoration: InputDecoration(
-                hintText: 'Search',
+                hintText: l10n.search,
                 hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: isDark ? Colors.white54 : Colors.black54, fontSize: 13),
                 border: InputBorder.none,
                 isDense: true,
@@ -422,39 +427,35 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
 
   Widget _buildNavigationLinks() {
     final authState = ref.watch(authProvider);
+    final l10n = AppLocalizations.of(context)!;
 
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
-        // ONLY COUNCIL sees Dashboard
+        _buildNavTile(
+          icon: CupertinoIcons.exclamationmark_triangle_fill,
+          title: l10n.reportAnIssue,
+          onTap: widget.onReportTapped,
+          color: const Color(0xFFE84A5F),
+        ),
         if (authState.role == AppRole.council) ...[
           const SizedBox(height: 8),
           _buildNavTile(
             icon: CupertinoIcons.chart_bar_alt_fill,
-            title: 'Council Dashboard',
+            title: l10n.councilDashboard,
             onTap: () {
-              // Navigate to the new Dashboard screen
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CouncilDashboard()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const CouncilDashboard()));
             },
             color: const Color(0xFF34C759), 
           ),
         ],
-
-        // ONLY ELECTRICIAN sees Tasks
         if (authState.role == AppRole.electrician) ...[
           const SizedBox(height: 8),
           _buildNavTile(
             icon: CupertinoIcons.bolt_fill,
-            title: 'My Tasks',
+            title: l10n.myTasks,
             onTap: () {
-              // Navigate to the Electrician Tasks screen
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ElectricianTasksScreen()),
-              );
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const ElectricianTasksScreen()));
             },
             color: const Color(0xFFFFCC00), 
           ),
@@ -466,21 +467,24 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
   Widget _buildExpandedStaffLogin() {
     final authState = ref.watch(authProvider);
     final isLoggedIn = authState.user != null;
+    final l10n = AppLocalizations.of(context)!;
 
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
         if (isLoggedIn) {
-          // OPEN PROFILE INSTEAD OF LOGGING OUT
           Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
         } else {
-          showDialog(context: context, builder: (context) => const LoginDialog());
+          showDialog(
+            context: context,
+            builder: (context) => const LoginDialog(),
+          );
         }
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isLoggedIn ? Colors.red.withOpacity(0.1) : Colors.white.withOpacity(0.05),
+          color: isLoggedIn ? const Color(0xFF0A84FF).withOpacity(0.1) : Colors.white.withOpacity(0.05),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white.withOpacity(0.05)),
         ),
@@ -490,12 +494,12 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: isLoggedIn ? Colors.red.withOpacity(0.2) : Colors.white.withOpacity(0.15),
+                color: isLoggedIn ? const Color(0xFF0A84FF).withOpacity(0.2) : Colors.white.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isLoggedIn ? CupertinoIcons.square_arrow_right : CupertinoIcons.person_solid, 
-                color: isLoggedIn ? Colors.redAccent : Colors.white, 
+                isLoggedIn ? CupertinoIcons.person_crop_circle_fill : CupertinoIcons.person_solid, 
+                color: isLoggedIn ? const Color(0xFF0A84FF) : Colors.white, 
                 size: 18,
               ),
             ),
@@ -505,12 +509,12 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    isLoggedIn ? 'Log Out' : 'Staff Login',
+                    isLoggedIn ? (authState.user?.email?.split('@')[0] ?? l10n.profile) : l10n.staffLogin,
                     style: TextStyle(
                       fontFamily: 'GoogleSansFlex',
-                      color: isLoggedIn ? Colors.redAccent : Colors.white,
+                      color: isLoggedIn ? Colors.white : Colors.white,
                       fontSize: 15,
-                      fontWeight: FontWeight.w500, // Reduced from w600
+                      fontWeight: FontWeight.w500,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -521,7 +525,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                         fontFamily: 'GoogleSansFlex',
                         color: Colors.white54,
                         fontSize: 10,
-                        fontWeight: FontWeight.w600, // Reduced from bold
+                        fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -564,7 +568,6 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                child: Icon(icon, color: Colors.white, size: 20),
              ),
              const SizedBox(width: 14),
-             // Wrap the Text in an Expanded widget
              Expanded(
                child: Text(
                  title,
@@ -575,7 +578,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                    fontWeight: FontWeight.w500,
                  ),
                  maxLines: 1,
-                 overflow: TextOverflow.ellipsis, // Adds the "..." if it's too long
+                 overflow: TextOverflow.ellipsis,
                ),
              ),
           ],
@@ -585,6 +588,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
   }
 
   Widget _buildSearchResults() {
+    final l10n = AppLocalizations.of(context)!;
     if (_isSearching) {
       return const Center(
         child: Padding(
@@ -595,12 +599,12 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
     }
 
     if (_searchResults.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Text(
-            'No results found',
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 14),
+            l10n.noReportsFound, // Using noReportsFound as a generic "not found" message
+            style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 14),
           ),
         ),
       );
@@ -636,7 +640,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
             );
             _clearSearch();
             if (MediaQuery.of(context).size.width < 768) {
-               _toggleExpand(); // hide on mobile after search
+               _toggleExpand();
             }
           },
         );
@@ -669,36 +673,38 @@ class _TooltipWithPointerState extends State<_TooltipWithPointer> {
     _overlayEntry = OverlayEntry(
       builder: (context) {
         return Positioned(
-          width: 140,
+          width: 100,
           child: CompositedTransformFollower(
             link: _layerLink,
             showWhenUnlinked: false,
-            offset: const Offset(55, 6), // Offset right the width of the icon + a bit
+            offset: const Offset(55, 6),
             child: Material(
               color: Colors.transparent,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CustomPaint(
-                    size: const Size(8, 12),
-                    painter: _PointerPainter(),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF868A91), // Tooltip color mimicking screenshot
-                      borderRadius: BorderRadius.circular(8),
+              child: Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CustomPaint(
+                      size: const Size(8, 12),
+                      painter: _PointerPainter(),
                     ),
-                    child: Text(
-                      widget.message,
-                      style: const TextStyle(fontFamily: 'GoogleSansFlex', 
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF868A91),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        widget.message,
+                        style: const TextStyle(fontFamily: 'GoogleSansFlex', 
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -758,7 +764,6 @@ class _PointerPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Time and Date Display Widget (IST/SLST)
 class _TimeDateDisplay extends StatefulWidget {
   final bool isExpanded;
   const _TimeDateDisplay({required this.isExpanded});
@@ -780,7 +785,6 @@ class _TimeDateDisplayState extends State<_TimeDateDisplay> {
 
   void _updateTime() {
     final utcNow = DateTime.now().toUtc();
-    // IST / SLST is UTC + 5:30
     final istNow = utcNow.add(const Duration(hours: 5, minutes: 30));
     if (mounted) {
       setState(() {

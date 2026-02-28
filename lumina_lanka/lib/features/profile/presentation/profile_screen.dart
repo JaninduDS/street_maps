@@ -8,6 +8,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/presentation/widgets/login_dialog.dart';
 import '../../settings/presentation/settings_screen.dart';
+import '../../../l10n/app_localizations.dart';
+
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -63,8 +65,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isLoggedIn = authState.user != null;
     final userEmail = authState.user?.email ?? 'guest@luminalanka.lk';
     // Get name from metadata if it exists, otherwise use the first part of the email
+    final l10n = AppLocalizations.of(context)!;
     final userName = authState.user?.userMetadata?['name'] ?? 
-        (isLoggedIn ? userEmail.split('@')[0].toUpperCase() : 'Guest User');
+      (isLoggedIn ? userEmail.split('@')[0].toUpperCase() : l10n.guestUser);
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -137,7 +140,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       border: Border.all(color: _getRoleColor(authState.role).withOpacity(0.5)),
                     ),
                     child: Text(
-                      _getRoleName(authState.role),
+                      _getRoleName(authState.role, l10n),
                       style: TextStyle(
                         fontFamily: 'GoogleSansFlex',
                         color: _getRoleColor(authState.role),
@@ -173,7 +176,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _getStatLabel(authState.role),
+                            _getStatLabel(authState.role, l10n),
                             style: TextStyle(
                               fontFamily: 'GoogleSansFlex',
                               color: Colors.white.withOpacity(0.6),
@@ -212,7 +215,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 children: [
                   _buildActionTile(
                     icon: CupertinoIcons.settings,
-                    title: 'App Settings',
+                    title: l10n.appSettings,
                     onTap: () {
                       // Navigate to Settings Screen
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
@@ -223,7 +226,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   if (!isLoggedIn)
                     _buildActionTile(
                       icon: CupertinoIcons.person_solid,
-                      title: 'Staff Login',
+                      title: l10n.staffLogin,
                       color: AppColors.accentBlue,
                       onTap: () {
                         showDialog(context: context, builder: (_) => const LoginDialog());
@@ -232,7 +235,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   else
                     _buildActionTile(
                       icon: CupertinoIcons.square_arrow_right,
-                      title: 'Log Out',
+                      title: l10n.logOut,
                       color: AppColors.accentRed,
                       onTap: () {
                         ref.read(authProvider.notifier).signOut();
@@ -280,20 +283,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  String _getRoleName(AppRole role) {
+  String _getRoleName(AppRole role, AppLocalizations l10n) {
     switch (role) {
-      case AppRole.council: return 'COUNCIL ADMIN';
-      case AppRole.electrician: return 'ELECTRICIAN';
-      case AppRole.marker: return 'MAP MARKER';
-      case AppRole.public: return 'PUBLIC USER';
+      case AppRole.council: return l10n.councilAdmin;
+      case AppRole.electrician: return l10n.electrician;
+      case AppRole.marker: return l10n.mapMarker;
+      case AppRole.public: return l10n.publicUser;
     }
   }
 
-  String _getStatLabel(AppRole role) {
+  String _getStatLabel(AppRole role, AppLocalizations l10n) {
     switch (role) {
-      case AppRole.council: return 'Total Poles in System';
-      case AppRole.electrician: return 'Total Issues Resolved';
-      case AppRole.marker: return 'Poles Marked by You';
+      case AppRole.council: return l10n.statTotalPoles;
+      case AppRole.electrician: return l10n.statIssuesResolved;
+      case AppRole.marker: return l10n.statPolesMarked;
       case AppRole.public: return '';
     }
   }
