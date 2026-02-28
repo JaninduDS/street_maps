@@ -864,15 +864,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             AnimatedPositioned(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOutCubic,
-              bottom: _isStreetViewExpanded ? 0 : MediaQuery.of(context).padding.bottom + 24,
-              right: _isStreetViewExpanded ? 0 : 24,
-              left: _isStreetViewExpanded ? 0 : null,
-              top: _isStreetViewExpanded ? 0 : null,
+              bottom: _isStreetViewExpanded ? 24 : MediaQuery.of(context).padding.bottom + 24,
+              right: _isStreetViewExpanded ? 88 : 88, // Pulls the expanded view left to clear the FABs
+              left: null,
+              top: null,
               child: StreetViewWidget(
                 latitude: _currentMapCenter?.latitude ?? _initialCenter.latitude,
                 longitude: _currentMapCenter?.longitude ?? _initialCenter.longitude,
                 apiKey: _googleApiKey,
                 isExpanded: _isStreetViewExpanded,
+                isSidebarExpanded: _isWebSidebarExpanded,
                 onExpand: () {
                   setState(() => _isStreetViewExpanded = !_isStreetViewExpanded);
                 },

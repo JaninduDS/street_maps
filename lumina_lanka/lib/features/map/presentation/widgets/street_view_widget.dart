@@ -14,6 +14,7 @@ class StreetViewWidget extends StatelessWidget {
   final VoidCallback onExpand;
   final VoidCallback onDone;
   final bool isExpanded;
+  final bool isSidebarExpanded;
 
   const StreetViewWidget({
     super.key,
@@ -23,6 +24,7 @@ class StreetViewWidget extends StatelessWidget {
     required this.onExpand,
     required this.onDone,
     this.isExpanded = false,
+    this.isSidebarExpanded = false,
   });
 
   @override
@@ -36,6 +38,7 @@ class StreetViewWidget extends StatelessWidget {
       onExpand: onExpand,
       onDone: onDone,
       isExpanded: isExpanded,
+      isSidebarExpanded: isSidebarExpanded,
     );
   }
 }
