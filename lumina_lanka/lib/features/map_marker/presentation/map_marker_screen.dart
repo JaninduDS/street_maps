@@ -12,6 +12,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:uuid/uuid.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/utils/app_notifications.dart';
 import '../../../core/theme/app_theme.dart';

@@ -929,7 +929,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   child: GlassmorphicContainer(
                     width: 180, // Increased width
                     height: 52,
-                    borderRadius: 16, // Apple-like squircle
+                    borderRadius: 100, // Apple-like squircle
                     blur: 35,
                     alignment: Alignment.center,
                     border: 1.5,
@@ -937,27 +937,27 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        const Color(0xFFA56969).withValues(alpha: 0.8), // Dusty rose/brown
-                        const Color(0xFF8D5A5A).withValues(alpha: 0.9),
+                        const Color(0xFF1E2C3A).withValues(alpha: 0.95), // Deep navy
+                        const Color(0xFF16202A).withValues(alpha: 0.95),
                       ],
                     ),
                     borderGradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        Colors.white.withValues(alpha: 0.2),
+                        Colors.white.withValues(alpha: 0.1),
                         Colors.white.withValues(alpha: 0.05),
                       ],
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(CupertinoIcons.exclamationmark_triangle_fill, color: Colors.white, size: 20),
+                        const Icon(CupertinoIcons.exclamationmark_bubble, color: Color(0xFF4A90E2), size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          'Report Issue',
+                          'Report an Issue',
                           style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                            color: Colors.white,
+                            color: const Color(0xFF4A90E2),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
