@@ -28,7 +28,6 @@ import '../../../shared/widgets/unified_glass_sheet.dart';
 import '../../../shared/widgets/web_sidebar.dart';
 import '../../map_marker/presentation/map_marker_screen.dart';
 import '../../report/presentation/report_side_panel.dart';
-import '../../report/presentation/report_issue_dialog.dart';
 import 'widgets/pole_info_sidebar.dart';
 import 'widgets/search_wards_sidebar.dart';
 import 'widgets/street_view_widget.dart';
@@ -89,7 +88,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   bool _isSearchActive = false; // Tracks if search results are shown (submitted)
 
   // Report State
-  bool _showReportModal = false; // New modal state
+  // Removed _showReportModal
 
   // Street View State (Web Only)
   bool _showStreetView = false;
@@ -375,7 +374,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           ),
           
           // === BLUR OVERLAY (Visible when Report Modal is Open) ===
-          if (_showReportModal)
+          if (_isReportPanelOpen)
             Positioned.fill(
               child: BackdropFilter(
                 filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
@@ -392,7 +391,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               right: 80, // Offset to the left of the buttons
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 200),
-                opacity: _showReportModal ? 0.0 : 1.0,
+                opacity: _isReportPanelOpen ? 0.0 : 1.0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
@@ -433,7 +432,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             right: 16,
             child: AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
-              opacity: _showReportModal ? 0.0 : 1.0,
+              opacity: _isReportPanelOpen ? 0.0 : 1.0,
               child: Column(
                 children: [
                   // === MAP, LOCATION & THEME PILL ===
@@ -887,9 +886,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               right: kIsWeb ? 90 : 24, // Avoid overlapping StreetView button on web
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
-                opacity: _showReportModal ? 0.0 : 1.0,
+                opacity: _isReportPanelOpen ? 0.0 : 1.0,
                 child: IgnorePointer(
-                  ignoring: _showReportModal,
+                  ignoring: _isReportPanelOpen,
                   child: FloatingActionButton.extended(
                     backgroundColor: const Color(0xFF0A84FF),
                     onPressed: () {
@@ -918,13 +917,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               left: 24, // Left aligned, below search panel
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
-                opacity: _isSearchActive || _showReportModal ? 0.0 : 1.0,
+                opacity: _isSearchActive || _isReportPanelOpen ? 0.0 : 1.0,
                 child: IgnorePointer(
-                  ignoring: _isSearchActive || _showReportModal,
+                  ignoring: _isSearchActive || _isReportPanelOpen,
                   child: GestureDetector(
                   onTap: () {
                     HapticFeedback.mediumImpact();
-                    setState(() => _showReportModal = true);
+                    setState(() => _isReportPanelOpen = true);
                   },
                   child: GlassmorphicContainer(
                     width: 180, // Increased width
@@ -1016,9 +1015,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               alignment: Alignment.topLeft, // Anchor to Top Left
               child: AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
-                opacity: _showReportModal ? 0.0 : 1.0,
+                opacity: _isReportPanelOpen ? 0.0 : 1.0,
                 child: IgnorePointer(
-                  ignoring: _showReportModal,
+                  ignoring: _isReportPanelOpen,
                   child: Padding(
                     // Pad from the top and left to float
                     padding: EdgeInsets.only(
@@ -1085,6 +1084,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               isVisible: _selectedPole != null,
               leftPosition: _isWebSidebarExpanded ? 240 : 104, // Shift right if sidebar is expanded
               onClose: () => setState(() => _selectedPole = null),
+              onReportTapped: () => setState(() => _isReportPanelOpen = true),
             ),
 
           // === SEARCH WARDS SIDEBAR ===
@@ -1106,36 +1106,29 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
 
           // === REPORT SIDE PANEL ===
-          ReportSidePanel(
-            isOpen: _isReportPanelOpen,
-            onClose: () => setState(() => _isReportPanelOpen = false),
+          Builder(
+            builder: (context) {
+              final isDesktop = MediaQuery.of(context).size.width >= 768;
+              double baseLeft = _isWebSidebarExpanded ? 240 : 104;
+              
+              if (isDesktop) {
+                if (_selectedPole != null) {
+                  baseLeft += 420 + 16;
+                } else if (_isSearchWardsOpen) {
+                  baseLeft += 420 + 16;
+                }
+              }
+              
+              return ReportSidePanel(
+                isOpen: _isReportPanelOpen,
+                leftPosition: isDesktop ? baseLeft : null,
+                onClose: () => setState(() => _isReportPanelOpen = false),
+              );
+            },
           ),
 
           // === REPORT MODAL ===
-          if (_showReportModal)
-            Positioned.fill(
-              child: Stack(
-                children: [
-                   // Scrim to dismiss
-                   GestureDetector(
-                     onTap: () {
-                         // Optional: Allow dismissing by tapping outside?
-                         // setState(() => _showReportModal = false);
-                     },
-                     child: Container(color: Colors.transparent),
-                   ),
-                   Center(
-                     child: ReportIssueDialog(
-                       onClose: () => setState(() => _showReportModal = false),
-                       onContinue: () {
-                         // Handle continue
-                         HapticFeedback.lightImpact();
-                       },
-                     ),
-                   ),
-                ],
-              ),
-            ),
+          // Removed: ReportIssueDialog is deprecated in favor of ReportSidePanel
           
           // === WEB SIDEBAR (Wide Screens Only) ===
           if (MediaQuery.of(context).size.width >= 768)
@@ -1161,7 +1154,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   );
                 },
                 onReportTapped: () {
-                  setState(() => _showReportModal = true);
+                  setState(() => _isReportPanelOpen = true);
                 },
                 onSearchTapped: () {
                   setState(() {

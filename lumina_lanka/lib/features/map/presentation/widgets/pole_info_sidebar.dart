@@ -11,6 +11,7 @@ import '../../../../core/utils/app_notifications.dart';
 class PoleInfoSidebar extends ConsumerStatefulWidget {
   final Map<String, dynamic>? poleData;
   final VoidCallback onClose;
+  final VoidCallback onReportTapped;
   final bool isVisible;
   final double leftPosition;
 
@@ -18,6 +19,7 @@ class PoleInfoSidebar extends ConsumerStatefulWidget {
     super.key,
     required this.poleData,
     required this.onClose,
+    required this.onReportTapped,
     required this.isVisible,
     required this.leftPosition,
   });
@@ -176,7 +178,7 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                                     color: Colors.white.withValues(alpha: 0.1),
                                     textColor: Colors.white,
                                     onTap: () {
-                                      // Placeholder
+                                      widget.onReportTapped();
                                     },
                                   ),
                                 ),
