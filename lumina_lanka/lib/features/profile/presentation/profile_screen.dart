@@ -7,6 +7,7 @@ import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/glass_card.dart';
 import '../../auth/presentation/widgets/login_dialog.dart';
+import '../../settings/presentation/settings_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -213,7 +214,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     icon: CupertinoIcons.settings,
                     title: 'App Settings',
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings coming soon!')));
+                      // Navigate to Settings Screen
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
                     },
                   ),
                   Divider(color: Colors.white.withOpacity(0.05), height: 1),
