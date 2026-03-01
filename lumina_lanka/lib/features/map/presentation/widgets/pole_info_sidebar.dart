@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/auth/auth_provider.dart';
 import '../../../../core/utils/app_notifications.dart';
@@ -169,8 +170,14 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                                   icon: CupertinoIcons.arrow_turn_up_right,
                                   color: const Color(0xFF0A84FF),
                                   textColor: Colors.white,
-                                  onTap: () {
-                                     // Placeholder
+                                  onTap: () async {
+                                    // Open Google Maps / Apple Maps
+                                    final lat = widget.poleData!['latitude'];
+                                    final lng = widget.poleData!['longitude'];
+                                    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+                                    if (await canLaunchUrl(url)) {
+                                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                                    }
                                   },
                                 ),
                               ),
@@ -462,6 +469,37 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                                             fontSize: 13,
                                           ),
                                         ),
+                                        
+                                        // === SHOW IMAGE IF IT EXISTS ===
+                                        if (report['image_url'] != null) ...[
+                                          const SizedBox(height: 12),
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Image.network(
+                                              report['image_url'],
+                                              width: double.infinity,
+                                              height: 150,
+                                              fit: BoxFit.cover,
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Container(
+                                                  height: 150,
+                                                  color: Colors.white.withOpacity(0.05),
+                                                  child: const Center(child: CupertinoActivityIndicator()),
+                                                );
+                                              },
+                                              errorBuilder: (context, error, stackTrace) {
+                                                return Container(
+                                                  height: 100,
+                                                  color: Colors.white.withOpacity(0.05),
+                                                  child: const Center(
+                                                    child: Icon(CupertinoIcons.photo, color: Colors.white38),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
                                       ],
                                     ),
                                   );
