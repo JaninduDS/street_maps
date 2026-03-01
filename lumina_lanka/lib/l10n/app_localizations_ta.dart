@@ -118,4 +118,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get search => 'தேடு';
+
+  @override
+  String get showOnlyBroken => 'பழுதடைந்தவை மட்டும்';
 }

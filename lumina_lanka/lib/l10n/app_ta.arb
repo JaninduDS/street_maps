@@ -35,5 +35,6 @@
     "noPendingTasks": "தற்போது பணிகள் எதுவும் இல்லை.",
     "markAsResolved": "தீர்க்கப்பட்டதாகக் குறிக்கவும்",
     "reportAnIssue": "சிக்கலைப் புகாரளி",
-    "search": "தேடு"
+    "search": "தேடு",
+    "showOnlyBroken": "பழுதடைந்தவை மட்டும்"
 }

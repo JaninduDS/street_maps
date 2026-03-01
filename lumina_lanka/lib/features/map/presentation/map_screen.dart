@@ -62,6 +62,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   LatLng? _currentMapCenter;
   bool _isSavingPole = false;
   
+  // Filter State
+  bool _showOnlyBroken = false;
+  List<Map<String, dynamic>> _allPoleData = [];
+  
   // Selected Pole Info Sidebar State
   Map<String, dynamic>? _selectedPole;
   
@@ -117,61 +121,59 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final List<dynamic> data = response as List<dynamic>;
 
       if (mounted) {
-        setState(() {
-          _markers.clear(); // Clear existing markers
-          for (var pole in data) {
-            final lat = pole['latitude'] as double;
-            final lng = pole['longitude'] as double;
-            final status = pole['status'] as String;
-            final fullId = pole['id'].toString();
-
-            // Determine color based on status
-            Color markerColor;
-            switch (status) {
-              case 'Reported':
-                markerColor = Colors.red;
-                break;
-              case 'Maintenance':
-                markerColor = Colors.orange;
-                break;
-              default:
-                markerColor = Colors.blue;
-            }
-
-            _markers.add(
-              Marker(
-                point: LatLng(lat, lng),
-                width: 40,
-                height: 40,
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    if (mounted) {
-                      setState(() {
-                         _selectedPole = {
-                           'id': fullId,
-                           'status': status,
-                           'latitude': lat,
-                           'longitude': lng,
-                         };
-                      });
-                      _mapController.move(LatLng(lat, lng), 18.0);
-                    }
-                  },
-                  child: Image.asset(
-                    'assets/icons/light_icon.png',
-                    width: 30,
-                    height: 30,
-                  ),
-                ),
-              ),
-            );
-          }
-        });
+        _allPoleData = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _rebuildMarkers();
       }
     } catch (e) {
       debugPrint('Error fetching poles from Supabase: $e');
     }
+  }
+
+  /// Rebuild markers from stored pole data, applying the current filter
+  void _rebuildMarkers() {
+    setState(() {
+      _markers.clear();
+      for (var pole in _allPoleData) {
+        final lat = pole['latitude'] as double;
+        final lng = pole['longitude'] as double;
+        final status = pole['status'] as String;
+        final fullId = pole['id'].toString();
+
+        // Skip working poles when filter is active
+        if (_showOnlyBroken && status != 'Reported' && status != 'Maintenance') {
+          continue;
+        }
+
+        _markers.add(
+          Marker(
+            point: LatLng(lat, lng),
+            width: 40,
+            height: 40,
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                if (mounted) {
+                  setState(() {
+                     _selectedPole = {
+                       'id': fullId,
+                       'status': status,
+                       'latitude': lat,
+                       'longitude': lng,
+                     };
+                  });
+                  _mapController.move(LatLng(lat, lng), 18.0);
+                }
+              },
+              child: Image.asset(
+                'assets/icons/light_icon.png',
+                width: 30,
+                height: 30,
+              ),
+            ),
+          ),
+        );
+      }
+    });
   }
 
   /// Initialize location services
@@ -501,7 +503,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     ),
                     child: GlassmorphicContainer(
                       width: 48,
-                      height: 144, // Increased to fit 3 buttons
+                      height: 192, // Fits 4 buttons (Map, Location, Theme, Filter)
                       borderRadius: 16,
                       blur: 14,
                       alignment: Alignment.center,
@@ -635,6 +637,47 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   child: Icon(
                                     isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
                                     color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87.withValues(alpha: 0.9),
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          // Divider 3
+                          Container(
+                            height: 1,
+                            width: 32,
+                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                          ),
+                          // Filter Broken Poles Button
+                          Tooltip(
+                            message: "Show Only Broken",
+                            textStyle: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 13),
+                            decoration: BoxDecoration(
+                              color: Colors.black87,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            preferBelow: false,
+                            verticalOffset: 24,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () {
+                                  HapticFeedback.mediumImpact();
+                                  setState(() => _showOnlyBroken = !_showOnlyBroken);
+                                  _rebuildMarkers();
+                                },
+                                child: Container(
+                                  width: 48,
+                                  height: 47,
+                                  color: Colors.transparent,
+                                  child: Icon(
+                                    _showOnlyBroken
+                                        ? CupertinoIcons.line_horizontal_3_decrease_circle_fill
+                                        : CupertinoIcons.line_horizontal_3_decrease,
+                                    color: _showOnlyBroken
+                                        ? const Color(0xFF0A84FF)
+                                        : (isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87.withValues(alpha: 0.9)),
                                     size: 20,
                                   ),
                                 ),

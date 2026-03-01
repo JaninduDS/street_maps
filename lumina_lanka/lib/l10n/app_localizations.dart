@@ -321,6 +321,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Search'**
   String get search;
+
+  /// No description provided for @showOnlyBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'Show Only Broken'**
+  String get showOnlyBroken;
 }
 
 class _AppLocalizationsDelegate

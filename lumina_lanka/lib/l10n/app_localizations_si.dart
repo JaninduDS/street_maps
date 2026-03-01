@@ -118,4 +118,7 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get search => 'සොයන්න';
+
+  @override
+  String get showOnlyBroken => 'දෝෂ සහිත පමණි';
 }
