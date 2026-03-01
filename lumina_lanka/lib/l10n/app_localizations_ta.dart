@@ -45,6 +45,9 @@ class AppLocalizationsTa extends AppLocalizations {
   String get staffLogin => 'பணியாளர் உள்நுழைவு';
 
   @override
+  String get publicLogin => 'பொது பயனர் உள்நுழைவு';
+
+  @override
   String get logOut => 'வெளியேறு';
 
   @override
@@ -118,4 +121,17 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get search => 'தேடு';
+
+  @override
+  String get showOnlyBroken => 'பழுதடைந்தவை மட்டும்';
+
+  @override
+  String get reportsSubmitted => 'சமர்ப்பிக்கப்பட்ட அறிக்கைகள்';
+
+  @override
+  String get myPastReports => 'எனது கடந்த கால அறிக்கைகள்';
+
+  @override
+  String get noPastReports =>
+      'நீங்கள் இதுவரை எந்த அறிக்கைகளையும் சமர்ப்பிக்கவில்லை.';
 }

@@ -11,6 +11,7 @@
     "profile": "Profile",
     "appSettings": "App Settings",
     "staffLogin": "Staff Login",
+    "publicLogin": "Public User Login",    
     "logOut": "Log Out",
     "guestUser": "Guest User",
     "publicUser": "PUBLIC USER",
@@ -35,5 +36,9 @@
     "noPendingTasks": "There are no pending tasks right now.",
     "markAsResolved": "Mark as Resolved",
     "reportAnIssue": "Report an Issue",
-    "search": "Search"
+    "search": "Search",
+    "showOnlyBroken": "Show Only Broken",
+    "reportsSubmitted": "Reports Submitted",
+    "myPastReports": "My Past Reports",
+    "noPastReports": "You haven't submitted any reports yet."
 }

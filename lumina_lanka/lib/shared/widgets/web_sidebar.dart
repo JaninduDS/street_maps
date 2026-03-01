@@ -226,22 +226,41 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
         
         const Spacer(),
 
-        // Bottom Staff Login (Collapsed)
-        _buildSidebarIconButton(
-          icon: isLoggedIn ? CupertinoIcons.person_crop_circle_fill : CupertinoIcons.person_solid,
-          tooltip: isLoggedIn ? l10n.profile : l10n.staffLogin,
-          onTap: () {
-            if (isLoggedIn) {
+        // Bottom Login (Collapsed)
+        if (isLoggedIn)
+          _buildSidebarIconButton(
+            icon: CupertinoIcons.person_crop_circle_fill,
+            tooltip: l10n.profile,
+            onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-            } else {
+            },
+            isActive: false,
+          )
+        else ...[
+          _buildSidebarIconButton(
+            icon: CupertinoIcons.person_solid,
+            tooltip: l10n.publicLogin,
+            onTap: () {
               showDialog(
                 context: context,
-                builder: (context) => const LoginDialog(),
+                builder: (context) => const LoginDialog(isStaffMode: false),
               );
-            }
-          },
-          isActive: false,
-        ),
+            },
+            isActive: false,
+          ),
+          const SizedBox(height: 12),
+          _buildSidebarIconButton(
+            icon: CupertinoIcons.briefcase_fill,
+            tooltip: l10n.staffLogin,
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => const LoginDialog(isStaffMode: true),
+              );
+            },
+            isActive: false,
+          ),
+        ],
         
         const SizedBox(height: 16),
 
@@ -469,56 +488,45 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
     final isLoggedIn = authState.user != null;
     final l10n = AppLocalizations.of(context)!;
 
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        if (isLoggedIn) {
+    if (isLoggedIn) {
+      return GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
           Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
-        } else {
-          showDialog(
-            context: context,
-            builder: (context) => const LoginDialog(),
-          );
-        }
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isLoggedIn ? const Color(0xFF0A84FF).withOpacity(0.1) : Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: isLoggedIn ? const Color(0xFF0A84FF).withOpacity(0.2) : Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0A84FF).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withOpacity(0.05)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0A84FF).withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(CupertinoIcons.person_crop_circle_fill, color: Color(0xFF0A84FF), size: 18),
               ),
-              child: Icon(
-                isLoggedIn ? CupertinoIcons.person_crop_circle_fill : CupertinoIcons.person_solid, 
-                color: isLoggedIn ? const Color(0xFF0A84FF) : Colors.white, 
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isLoggedIn ? (authState.user?.email?.split('@')[0] ?? l10n.profile) : l10n.staffLogin,
-                    style: TextStyle(
-                      fontFamily: 'GoogleSansFlex',
-                      color: isLoggedIn ? Colors.white : Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      authState.user?.email?.split('@')[0] ?? l10n.profile,
+                      style: const TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (isLoggedIn)
                     Text(
                       authState.role.name.toUpperCase(),
                       style: const TextStyle(
@@ -529,12 +537,105 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      );
+    }
+
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            showDialog(
+              context: context,
+              builder: (context) => const LoginDialog(isStaffMode: false),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(CupertinoIcons.person_solid, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.publicLogin,
+                    style: const TextStyle(
+                      fontFamily: 'GoogleSansFlex',
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            showDialog(
+              context: context,
+              builder: (context) => const LoginDialog(isStaffMode: true),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withOpacity(0.05)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(CupertinoIcons.briefcase_fill, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.staffLogin,
+                    style: const TextStyle(
+                      fontFamily: 'GoogleSansFlex',
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
