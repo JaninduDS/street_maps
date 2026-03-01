@@ -153,7 +153,7 @@ class _NotificationWidgetState extends State<_NotificationWidget>
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
                               // Icon
                               Container(
@@ -176,29 +176,6 @@ class _NotificationWidgetState extends State<_NotificationWidget>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          widget.title,
-                                          style: const TextStyle(
-                                            fontFamily: 'GoogleSansFlex',
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 15,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                        Text(
-                                          'now',
-                                          style: TextStyle(
-                                            fontFamily: 'GoogleSansFlex',
-                                            fontSize: 12,
-                                            color: Colors.white.withOpacity(0.5),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
                                     Text(
                                       widget.message,
                                       style: TextStyle(

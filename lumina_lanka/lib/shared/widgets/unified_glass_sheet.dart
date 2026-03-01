@@ -4,13 +4,13 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:glassmorphism/glassmorphism.dart';
-import 'package:http/http.dart' as http;
+
+import '../../core/services/google_places_service.dart';
 
 /// Unified Glass Sheet - Frosted "Floating Island" bottom panel
 /// Now with integrated search functionality and Light/Dark mode support
@@ -40,15 +40,15 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
   // Height state
   double _currentHeight = 78.0;
   static const double _minHeight = 78.0;
-  static const double _maxHeight = 400.0; // Taller for search results
 
   // Search state
   bool _isSearchMode = false;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  List<Map<String, dynamic>> _searchResults = [];
+  List<PlacePrediction> _searchResults = [];
   bool _isSearching = false;
   Timer? _debounce;
+  String _sessionToken = GooglePlacesService.generateSessionToken();
 
   @override
   void initState() {
@@ -69,6 +69,52 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     super.dispose();
   }
 
+  void _onSearchChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    if (value.trim().isEmpty) {
+      setState(() {
+        _searchResults = [];
+        if (_isSearchMode) {
+          _isSearchMode = false;
+          _currentHeight = _minHeight;
+          widget.onSearchModeChanged?.call(false);
+        }
+      });
+      return;
+    }
+
+    // 300ms debounce for snappy feel
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _fetchSuggestions(value);
+    });
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
+    if (query.trim().isEmpty) return;
+    setState(() => _isSearching = true);
+
+    final results = await GooglePlacesService.autocomplete(
+      query,
+      sessionToken: _sessionToken,
+    );
+
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+
+        // Auto-expand if we have results
+        if (_searchResults.isNotEmpty) {
+          final screenHeight = MediaQuery.of(context).size.height;
+          _currentHeight = screenHeight * 0.7;
+          _isSearchMode = true;
+          widget.onSearchModeChanged?.call(true);
+        }
+      });
+    }
+  }
+
   void _onSearchSubmitted(String query) {
     if (query.trim().isEmpty) return;
     
@@ -78,12 +124,12 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     // Expand to show results
     setState(() {
       final screenHeight = MediaQuery.of(context).size.height;
-      _currentHeight = screenHeight * 0.7; // 70% of screen height
+      _currentHeight = screenHeight * 0.7;
       _isSearchMode = true;
     });
 
-    _searchFocusNode.unfocus(); // Dismiss keyboard to see results
-    _searchAddress(query);
+    _searchFocusNode.unfocus();
+    _fetchSuggestions(query);
   }
 
   void _exitSearchMode() {
@@ -99,46 +145,37 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
       _searchController.clear();
     });
     _searchFocusNode.unfocus();
+    // Reset session token for next search session
+    _sessionToken = GooglePlacesService.generateSessionToken();
   }
 
-  Future<void> _searchAddress(String query, {bool isAutoSearch = false}) async {
-    if (query.trim().isEmpty) return;
+  Future<void> _selectResult(PlacePrediction prediction) async {
+    HapticFeedback.mediumImpact();
 
-    setState(() => _isSearching = true);
-
-    try {
-      final uri = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=5&countrycodes=lk',
+    if (prediction.lat != null && prediction.lon != null) {
+      widget.onLocationSelected?.call(
+        prediction.lat!,
+        prediction.lon!,
+        prediction.description,
       );
-      
-      final response = await http.get(uri, headers: {
-        'User-Agent': 'LuminaLanka/1.0 (Flutter App)',
-      });
+    }
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        if (mounted) {
-          setState(() {
-            _searchResults = data.map((item) => {
-              'lat': double.parse(item['lat']),
-              'lon': double.parse(item['lon']),
-              'display_name': item['display_name'] as String,
-            }).toList();
-            _isSearching = false;
-            
-            // Auto-expand if we have results during auto-search
-            if (isAutoSearch && _searchResults.isNotEmpty) {
-              final screenHeight = MediaQuery.of(context).size.height;
-              _currentHeight = screenHeight * 0.7;
-              _isSearchMode = true;
-            }
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isSearching = false);
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isSearching = false);
+    // Cancel any pending search
+    _debounce?.cancel();
+
+    // Notify parent to keep active (docked at bottom)
+    widget.onSearchModeChanged?.call(true);
+
+    // Force collapse and clear
+    if (mounted) {
+      setState(() {
+        _isSearchMode = false;
+        _currentHeight = _minHeight;
+        _searchResults = [];
+        _isSearching = false;
+      });
+      _searchFocusNode.unfocus();
+      _sessionToken = GooglePlacesService.generateSessionToken();
     }
   }
 
@@ -280,14 +317,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
                       isDense: true,
                       contentPadding: EdgeInsets.zero,
                     ),
-                    onChanged: (value) {
-                      if (_debounce?.isActive ?? false) _debounce!.cancel();
-                      _debounce = Timer(const Duration(milliseconds: 500), () {
-                        if (value.trim().isNotEmpty) {
-                           _searchAddress(value, isAutoSearch: true);
-                        }
-                      });
-                    },
+                    onChanged: _onSearchChanged,
                     onSubmitted: _onSearchSubmitted,
                     onTap: () {
                       // Just focus, don't expand yet
@@ -349,43 +379,34 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
-        final result = _searchResults[index];
+        final prediction = _searchResults[index];
         return ListTile(
-          leading: const Icon(CupertinoIcons.location_solid, color: Color(0xFF0A84FF), size: 22), // iOS Blue Marker
+          leading: const Icon(CupertinoIcons.location_solid, color: Color(0xFF0A84FF), size: 22),
           title: Text(
-            result['display_name'],
+            prediction.mainText,
             style: TextStyle(
               fontFamily: 'GoogleSansFlex', 
               color: isDark ? Colors.white : Colors.black87, 
-              fontSize: 14
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
             ),
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
+          subtitle: prediction.secondaryText.isNotEmpty
+              ? Text(
+                  prediction.secondaryText,
+                  style: TextStyle(
+                    fontFamily: 'GoogleSansFlex',
+                    color: isDark ? Colors.white38 : Colors.black38,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                )
+              : null,
           contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-          onTap: () {
-            HapticFeedback.mediumImpact();
-            widget.onLocationSelected?.call(
-              result['lat'],
-              result['lon'],
-              result['display_name'],
-            );
-            
-            // Cancel any pending search
-            _debounce?.cancel();
-
-            // Notify parent to keep active (docked at bottom)
-            widget.onSearchModeChanged?.call(true); 
-
-            // Force collapse and clear
-            setState(() {
-              _isSearchMode = false;
-              _currentHeight = _minHeight;
-              _searchResults = []; // Clear results to prevent rendering
-              _isSearching = false;
-            });
-            _searchFocusNode.unfocus();
-          },
+          onTap: () => _selectResult(prediction),
         );
       },
     );
