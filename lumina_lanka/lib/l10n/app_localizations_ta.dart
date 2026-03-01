@@ -134,4 +134,7 @@ class AppLocalizationsTa extends AppLocalizations {
   @override
   String get noPastReports =>
       'நீங்கள் இதுவரை எந்த அறிக்கைகளையும் சமர்ப்பிக்கவில்லை.';
+
+  @override
+  String get manageStaff => 'பணியாளர்களை நிர்வகி';
 }

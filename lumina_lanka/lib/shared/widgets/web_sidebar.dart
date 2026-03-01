@@ -471,7 +471,7 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
           const SizedBox(height: 8),
           _buildNavTile(
             icon: CupertinoIcons.person_2_alt,
-            title: 'Manage Staff',
+            title: l10n.manageStaff,
             onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffManagementScreen()));
             },

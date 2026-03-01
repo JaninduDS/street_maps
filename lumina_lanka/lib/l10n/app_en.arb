@@ -40,5 +40,6 @@
     "showOnlyBroken": "Show Only Broken",
     "reportsSubmitted": "Reports Submitted",
     "myPastReports": "My Past Reports",
-    "noPastReports": "You haven't submitted any reports yet."
+    "noPastReports": "You haven't submitted any reports yet.",
+    "manageStaff": "Manage Staff"
 }

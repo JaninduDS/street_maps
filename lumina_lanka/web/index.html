@@ -36,8 +36,32 @@
   <link rel="manifest" href="manifest.json">
 </head>
 
-<body>
+<body style="background-color: #000000; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh;">
+  
+  <!-- This is the loading logo that shows before Flutter starts -->
+  <img src="icons/Icon-192.png" alt="Loading..." style="width: 100px; height: 100px; animation: pulse 2s infinite ease-in-out;" id="loading-indicator" />
+
+  <!-- CSS for the pulsing animation -->
+  <style>
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.7; }
+      50% { transform: scale(1.1); opacity: 1.0; }
+      100% { transform: scale(0.9); opacity: 0.7; }
+    }
+  </style>
+
+  <!-- Flutter's bootstrapper -->
   <script src="flutter_bootstrap.js" async></script>
+  
+  <!-- This script hides our loading logo the exact millisecond Flutter is ready -->
+  <script>
+    window.addEventListener('flutter-first-frame', function() {
+      var loader = document.getElementById('loading-indicator');
+      if (loader) {
+        loader.style.display = 'none';
+      }
+    });
+  </script>
 </body>
 
 </html>

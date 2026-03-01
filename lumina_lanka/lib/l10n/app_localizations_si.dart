@@ -133,4 +133,7 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get noPastReports => 'ඔබ තවමත් කිසිදු වාර්තාවක් ඉදිරිපත් කර නොමැත.';
+
+  @override
+  String get manageStaff => 'කාර්ය මණ්ඩලය කළමනාකරණය';
 }

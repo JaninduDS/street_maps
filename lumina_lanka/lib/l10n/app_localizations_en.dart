@@ -133,4 +133,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noPastReports => 'You haven\'t submitted any reports yet.';
+
+  @override
+  String get manageStaff => 'Manage Staff';
 }

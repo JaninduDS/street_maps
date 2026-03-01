@@ -351,6 +351,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You haven\'t submitted any reports yet.'**
   String get noPastReports;
+
+  /// No description provided for @manageStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage Staff'**
+  String get manageStaff;
 }
 
 class _AppLocalizationsDelegate
