@@ -20,6 +20,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // Local Imports
 import '../../../core/auth/auth_provider.dart';
@@ -56,13 +57,13 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   int? _selectedActionIndex;
   
   // Markers
-  final List<Marker> _markers = [];
   final List<Map<String, dynamic>> _poleDataList = []; // Raw pole data for distance calc
   
   // Nearest Pole Button State
   bool _showNearestPoleButton = false;
   Map<String, dynamic>? _nearestPoleCache; // Cached nearest pole data
   String _nearestPoleLocation = ''; // Reverse-geocoded location of nearest pole
+  String? _expandedPoleId; // Track which marker is expanded to show status
   
   // Mark Pole State
   LatLng? _currentMapCenter;
@@ -126,16 +127,17 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final List<dynamic> data = response as List<dynamic>;
 
       if (mounted) {
-        _poleDataList.clear();
-        for (var pole in data) {
-          _poleDataList.add({
-            'id': pole['id'].toString(),
-            'status': pole['status'] as String,
-            'latitude': pole['latitude'] as double,
-            'longitude': pole['longitude'] as double,
-          });
-        }
-        _rebuildMarkers();
+        setState(() {
+          _poleDataList.clear(); // Clear raw data
+          for (var pole in data) {
+            _poleDataList.add({
+              'id': pole['id'].toString(),
+              'status': pole['status'] as String,
+              'latitude': pole['latitude'] as double,
+              'longitude': pole['longitude'] as double,
+            });
+          }
+        });
       }
     } catch (e) {
       debugPrint('Error fetching poles from Supabase: $e');
@@ -143,53 +145,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   }
 
 
-  /// Rebuild markers from stored pole data, applying the current filter
-  void _rebuildMarkers() {
-    setState(() {
-      _markers.clear();
-      for (var pole in _poleDataList) {
-        final lat = pole['latitude'] as double;
-        final lng = pole['longitude'] as double;
-        final status = pole['status'] as String;
-        final fullId = pole['id'].toString();
 
-        // Skip working poles when filter is active
-        if (_showOnlyBroken && status != 'Reported' && status != 'Maintenance') {
-          continue;
-        }
-
-        _markers.add(
-          Marker(
-            point: LatLng(lat, lng),
-            width: 40,
-            height: 40,
-            child: GestureDetector(
-              onTap: () {
-                HapticFeedback.lightImpact();
-                if (mounted) {
-                  setState(() {
-                     _selectedPole = {
-                       'id': fullId,
-                       'status': status,
-                       'latitude': lat,
-                       'longitude': lng,
-                     };
-                     _isSearchWardsOpen = false;
-                  });
-                  _mapController.move(LatLng(lat, lng), 18.0);
-                }
-              },
-              child: Image.asset(
-                'assets/icons/light_icon.png',
-                width: 30,
-                height: 30,
-              ),
-            ),
-          ),
-        );
-      }
-    });
-  }
 
   /// Calculate Haversine distance between two points in meters
   double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -506,6 +462,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     // Check if in "Mark Pole" mode (Index 1)
     final isMarkingPole = _selectedActionIndex == 1;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    const wDark = true; // Floating widgets always use dark styling
 
     // Automatically switch CartoDB tile URLs based on theme for Plain mode
     if (_currentMapMode == 'Plain') {
@@ -575,7 +532,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 ),
               
               // Markers Layer
-              MarkerLayer(markers: _markers),
+              MarkerLayer(markers: _buildMarkers()),
             ],
           ),
           
@@ -601,9 +558,9 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1C1C1E) : Colors.white, // Dark iOS style surface
+                    color: wDark ? const Color(0xFF1C1C1E) : Colors.white, // Dark iOS style surface
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+                    border: Border.all(color: wDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.2),
@@ -652,10 +609,10 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1C1C1E).withOpacity(0.8) : Colors.white.withOpacity(0.8),
+                      color: wDark ? const Color(0xFF1C1C1E).withOpacity(0.8) : Colors.white.withOpacity(0.8),
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
+                        color: wDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -711,7 +668,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       linearGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isDark 
+                        colors: wDark 
                           ? [
                               const Color(0xFF262626).withValues(alpha: 0.60),
                               const Color(0xFF262626).withValues(alpha: 0.60),
@@ -724,7 +681,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       borderGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isDark
+                        colors: wDark
                           ? [
                               Colors.white.withValues(alpha: 0.20),
                               Colors.white.withValues(alpha: 0.11),
@@ -760,7 +717,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   color: Colors.transparent,
                                   child: Icon(
                                     CupertinoIcons.square_stack_3d_down_right_fill, // Layers icon like iOS
-                                    color: isDark ? Colors.white : Colors.black87,
+                                    color: wDark ? Colors.white : Colors.black87,
                                     size: 20,
                                   ),
                                 ),
@@ -771,7 +728,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Container(
                             height: 1,
                             width: 32,
-                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                            color: wDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
                           ),
                           // Location Button
                           Tooltip(
@@ -799,7 +756,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   color: Colors.transparent,
                                   child: Icon(
                                     CupertinoIcons.location_fill, // More star-like
-                                    color: isDark ? Colors.white.withValues(alpha: 0.7) : Colors.black87.withValues(alpha: 0.7),
+                                    color: wDark ? Colors.white.withValues(alpha: 0.7) : Colors.black87.withValues(alpha: 0.7),
                                     size: 20,
                                   ),
                                 ),
@@ -810,7 +767,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Container(
                             height: 1,
                             width: 32,
-                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                            color: wDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
                           ),
                           // Theme Toggle Button
                           Tooltip(
@@ -836,7 +793,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   color: Colors.transparent,
                                   child: Icon(
                                     isDark ? CupertinoIcons.sun_max_fill : CupertinoIcons.moon_fill,
-                                    color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87.withValues(alpha: 0.9),
+                                    color: wDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87.withValues(alpha: 0.9),
                                     size: 20,
                                   ),
                                 ),
@@ -865,7 +822,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 onTap: () {
                                   HapticFeedback.mediumImpact();
                                   setState(() => _showOnlyBroken = !_showOnlyBroken);
-                                  _rebuildMarkers();
                                 },
                                 child: Container(
                                   width: 48,
@@ -914,12 +870,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF262626).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
+                                  color: wDark ? const Color(0xFF262626).withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8),
                                   shape: BoxShape.circle,
                                   boxShadow: [
                                     BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 16, offset: const Offset(0, 4)),
                                   ],
-                                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1), width: 1.0),
+                                  border: Border.all(color: wDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1), width: 1.0),
                                 ),
                               child: Transform.rotate(
                                 angle: -_mapRotation * (pi / 180.0), // Rotate opposite to map to point North
@@ -937,7 +893,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                             width: i % 3 == 0 ? 3 : 2,
                                             height: i % 3 == 0 ? 6 : 4,
                                             decoration: BoxDecoration(
-                                              color: (isDark ? Colors.white : Colors.black).withValues(alpha: i == 0 ? 0.0 : 0.4), // Hide top tick for arrow
+                                              color: (wDark ? Colors.white : Colors.black).withValues(alpha: i == 0 ? 0.0 : 0.4), // Hide top tick for arrow
                                               borderRadius: BorderRadius.circular(1),
                                             ),
                                           ),
@@ -959,7 +915,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                       'N',
                                       style: TextStyle(
                                         fontFamily: 'GoogleSansFlex',
-                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        color: wDark ? Colors.white70 : Colors.black87,
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -994,7 +950,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       linearGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isDark 
+                        colors: wDark 
                           ? [
                               const Color(0xFF262626).withValues(alpha: 0.60),
                               const Color(0xFF262626).withValues(alpha: 0.60),
@@ -1007,7 +963,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                       borderGradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: isDark
+                        colors: wDark
                           ? [
                               Colors.white.withValues(alpha: 0.20),
                               Colors.white.withValues(alpha: 0.11),
@@ -1035,7 +991,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 color: Colors.transparent,
                                 child: Icon(
                                   CupertinoIcons.plus,
-                                  color: isDark ? Colors.white : Colors.black87,
+                                  color: wDark ? Colors.white : Colors.black87,
                                   size: 20,
                                 ),
                               ),
@@ -1045,7 +1001,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           Container(
                             height: 1,
                             width: 32,
-                            color: isDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
+                            color: wDark ? Colors.white.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.1),
                           ),
                           // Zoom Out
                           MouseRegion(
@@ -1062,7 +1018,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                 color: Colors.transparent,
                                 child: Icon(
                                   CupertinoIcons.minus,
-                                  color: isDark ? Colors.white : Colors.black87,
+                                  color: wDark ? Colors.white : Colors.black87,
                                   size: 20,
                                 ),
                               ),
@@ -1141,7 +1097,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           linearGradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: isDark 
+                            colors: wDark 
                               ? [
                                   const Color(0xFF262626).withValues(alpha: 0.60),
                                   const Color(0xFF262626).withValues(alpha: 0.60),
@@ -1154,7 +1110,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           borderGradient: LinearGradient(
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
-                            colors: isDark
+                            colors: wDark
                               ? [
                                   Colors.white.withValues(alpha: 0.20),
                                   Colors.white.withValues(alpha: 0.11),
@@ -1166,7 +1122,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                           ),
                           child: Icon(
                             Icons.remove_red_eye_rounded,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                            color: wDark ? Colors.white70 : Colors.black87,
                             size: 22,
                           ),
                         ),
@@ -1283,12 +1239,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                   child: Container(
                   width: 340,
                   decoration: BoxDecoration(
-                    color: isDark
+                    color: wDark
                         ? const Color(0xFF1C1C1E).withValues(alpha: 0.9)
                         : Colors.white.withValues(alpha: 0.95),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: isDark
+                      color: wDark
                           ? Colors.white.withValues(alpha: 0.12)
                           : Colors.black.withValues(alpha: 0.08),
                       width: 1,
@@ -1319,7 +1275,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                   'Nearest Streetlight',
                                   style: TextStyle(
                                     fontFamily: 'GoogleSansFlex',
-                                    color: isDark ? Colors.white : Colors.black87,
+                                    color: wDark ? Colors.white : Colors.black87,
                                     fontSize: 17,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1330,7 +1286,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                                     _nearestPoleLocation,
                                     style: TextStyle(
                                       fontFamily: 'GoogleSansFlex',
-                                      color: isDark
+                                      color: wDark
                                           ? Colors.white.withValues(alpha: 0.55)
                                           : Colors.black54,
                                       fontSize: 13,
@@ -1472,7 +1428,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                               opacity: _isSearchActive ? 0.0 : 1.0,
                               child: Padding(
                                 padding: const EdgeInsets.only(top: 16),
-                                child: _buildActionButtons(isDark),
+                                child: _buildActionButtons(wDark),
                               ),
                             ),
                           ),
@@ -1595,7 +1551,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     );
   }
   
-  Widget _buildActionButtons(bool isDark) {
+  Widget _buildActionButtons(bool wDark) {
     final actions = [
       ('Public User', CupertinoIcons.person_2_fill),
       ('Council', CupertinoIcons.building_2_fill),
@@ -1618,8 +1574,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8), 
-                  border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+                  color: wDark ? Colors.black.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.8), 
+                  border: Border.all(color: wDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
                   borderRadius: BorderRadius.circular(100), // Pill shape
                 ),
                 child: Row(
@@ -1629,7 +1585,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                     Text(
                       action.$1,
                       style: TextStyle(fontFamily: 'GoogleSansFlex', 
-                        color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+                        color: wDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1643,7 +1599,129 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       ),
     );
   }
+
+  List<Marker> _buildMarkers() {
+    return _poleDataList.where((pole) {
+      if (_showOnlyBroken) {
+        final status = pole['status'] as String;
+        return status == 'Reported' || status == 'Maintenance';
+      }
+      return true;
+    }).map((pole) {
+      final lat = pole['latitude'] as double;
+      final lng = pole['longitude'] as double;
+      final status = pole['status'] as String;
+      final fullId = pole['id'].toString();
+
+      final isExpanded = _expandedPoleId == fullId;
+
+      // Status color mapping (Light Outline/Text)
+      Color statusColor;
+
+      switch (status) {
+        case 'Maintenance': // Not Working
+          statusColor = const Color(0xFFFE3D2F);
+          break;
+        case 'Reported':
+          statusColor = const Color(0xFFFE9500);
+          break;
+        case 'Active': // Working
+          statusColor = const Color(0xFF53B36F);
+          break;
+        default:
+          statusColor = const Color(0xFF0A84FF); // Light Blue fallback
+      }
+
+      return Marker(
+        point: LatLng(lat, lng),
+        width: isExpanded ? 140 : 54, // slightly larger for the box look
+        height: 54,
+        child: GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            if (mounted) {
+              if (isExpanded) {
+                // Second tap: open pole info and collapse
+                setState(() {
+                  _selectedPole = {
+                    'id': fullId,
+                    'status': status,
+                    'latitude': lat,
+                    'longitude': lng,
+                  };
+                  _isSearchWardsOpen = false;
+                  _expandedPoleId = null;
+                });
+                _mapController.move(LatLng(lat, lng), 18.0);
+              } else {
+                // First tap: expand to show status
+                setState(() {
+                  _expandedPoleId = fullId;
+                });
+                _mapController.move(LatLng(lat, lng), _mapController.camera.zoom);
+              }
+            }
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+            padding: EdgeInsets.symmetric(
+              horizontal: isExpanded ? 16 : 8,
+              vertical: 8,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFF202020).withOpacity(0.95), // Original Dark, sleek box
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.08),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3), // Reverted shadow
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  isExpanded
+                      ? 'assets/icons/fluent-color--lightbulb-checkmark-32.svg'
+                      : 'assets/icons/fluent-color--lightbulb-48.svg',
+                  width: 32,
+                  height: 32,
+                  fit: BoxFit.contain,
+                ),
+                if (isExpanded) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      status,
+                      style: TextStyle(
+                        fontFamily: 'GoogleSansFlex',
+                        color: statusColor, // Light text color
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
 }
+
 
 /// Custom painter for the red North triangle in the compass
 class TrianglePainter extends CustomPainter {
