@@ -36,7 +36,7 @@ class AppLocalizationsSi extends AppLocalizations {
   String get electricityBoard => 'විදුලිබල මණ්ඩලය (CEB)';
 
   @override
-  String get profile => 'පැතිකඩ';
+  String get profile => 'ගිණුම';
 
   @override
   String get appSettings => 'යෙදුම් සැකසුම්';
@@ -45,7 +45,10 @@ class AppLocalizationsSi extends AppLocalizations {
   String get staffLogin => 'කාර්ය මණ්ඩල පිවිසුම';
 
   @override
-  String get logOut => 'ඉවත් වන්න';
+  String get publicLogin => 'පොදු පරිශීලක පිවිසුම';
+
+  @override
+  String get logOut => 'ඉවත්වන්න';
 
   @override
   String get guestUser => 'ආගන්තුක පරිශීලක';
@@ -124,4 +127,10 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get reportsSubmitted => 'ඉදිරිපත් කළ වාර්තා';
+
+  @override
+  String get myPastReports => 'මගේ පසුගිය වාර්තා';
+
+  @override
+  String get noPastReports => 'ඔබ තවමත් කිසිදු වාර්තාවක් ඉදිරිපත් කර නොමැත.';
 }

@@ -11,6 +11,7 @@
     "profile": "Profile",
     "appSettings": "App Settings",
     "staffLogin": "Staff Login",
+    "publicLogin": "Public User Login",    
     "logOut": "Log Out",
     "guestUser": "Guest User",
     "publicUser": "PUBLIC USER",
@@ -37,5 +38,7 @@
     "reportAnIssue": "Report an Issue",
     "search": "Search",
     "showOnlyBroken": "Show Only Broken",
-    "reportsSubmitted": "Reports Submitted"
+    "reportsSubmitted": "Reports Submitted",
+    "myPastReports": "My Past Reports",
+    "noPastReports": "You haven't submitted any reports yet."
 }

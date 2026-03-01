@@ -45,6 +45,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get staffLogin => 'Staff Login';
 
   @override
+  String get publicLogin => 'Public User Login';
+
+  @override
   String get logOut => 'Log Out';
 
   @override
@@ -124,4 +127,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportsSubmitted => 'Reports Submitted';
+
+  @override
+  String get myPastReports => 'My Past Reports';
+
+  @override
+  String get noPastReports => 'You haven\'t submitted any reports yet.';
 }

@@ -8,10 +8,11 @@
     "supportAndEmergency": "සහාය සහ හදිසි",
     "councilEmergencyLine": "නගර සභා හදිසි ඇමතුම්",
     "electricityBoard": "විදුලිබල මණ්ඩලය (CEB)",
-    "profile": "පැතිකඩ",
+    "profile": "ගිණුම",
     "appSettings": "යෙදුම් සැකසුම්",
     "staffLogin": "කාර්ය මණ්ඩල පිවිසුම",
-    "logOut": "ඉවත් වන්න",
+    "publicLogin": "පොදු පරිශීලක පිවිසුම",
+    "logOut": "ඉවත්වන්න",
     "guestUser": "ආගන්තුක පරිශීලක",
     "publicUser": "පොදු පරිශීලක",
     "mapMarker": "සිතියම් සලකුණුකරු",
@@ -37,5 +38,7 @@
     "reportAnIssue": "ගැටළුවක් වාර්තා කරන්න",
     "search": "සොයන්න",
     "showOnlyBroken": "දෝෂ සහිත පමණි",
-    "reportsSubmitted": "ඉදිරිපත් කළ වාර්තා"
+    "reportsSubmitted": "ඉදිරිපත් කළ වාර්තා",
+    "myPastReports": "මගේ පසුගිය වාර්තා",
+    "noPastReports": "ඔබ තවමත් කිසිදු වාර්තාවක් ඉදිරිපත් කර නොමැත."
 }

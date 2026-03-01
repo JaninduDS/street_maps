@@ -2,9 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/utils/app_notifications.dart';
+import '../../../../core/auth/auth_provider.dart';
 
 class LoginDialog extends StatefulWidget {
-  const LoginDialog({super.key});
+  final bool isStaffMode;
+  const LoginDialog({super.key, this.isStaffMode = false});
 
   @override
   State<LoginDialog> createState() => _LoginDialogState();
@@ -22,6 +24,7 @@ class _LoginDialogState extends State<LoginDialog> {
   bool _isLoading = false;
   bool _isStep2 = false; // false = email step, true = password step
   bool _isSignUpMode = false; // true = sign up step
+  AppRole _selectedStaffRole = AppRole.council;
 
   static const _blue = Color(0xFF0A84FF);
   static const _bgColor = Color(0xFF1C1C1E);
@@ -74,7 +77,7 @@ class _LoginDialogState extends State<LoginDialog> {
       if (res.user != null) {
         await Supabase.instance.client.from('profiles').upsert({
           'id': res.user!.id,
-          'role': 'public',
+          'role': widget.isStaffMode ? _selectedStaffRole.name : 'public',
           'name': name,
           'phone': _phoneController.text.trim(),
         });
@@ -254,10 +257,10 @@ class _LoginDialogState extends State<LoginDialog> {
             ),
             const SizedBox(height: 24),
             // Title
-            const Text(
-              'Continue with Email Address',
+            Text(
+              widget.isStaffMode ? 'Staff Login' : 'Public User Login',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'GoogleSansFlex',
                 color: Colors.white,
                 fontSize: 26,
@@ -640,10 +643,10 @@ class _LoginDialogState extends State<LoginDialog> {
             ),
             const SizedBox(height: 24),
             // Title
-            const Text(
-              'Create Your Account',
+            Text(
+              widget.isStaffMode ? 'Create Staff Account' : 'Create Your Account',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'GoogleSansFlex',
                 color: Colors.white,
                 fontSize: 26,
@@ -739,6 +742,9 @@ class _LoginDialogState extends State<LoginDialog> {
                   Container(
                     height: 52,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: widget.isStaffMode ? Border(bottom: BorderSide(color: _borderColor.withOpacity(0.8))) : null,
+                    ),
                     child: TextField(
                       controller: _phoneController,
                       focusNode: _phoneFocus,
@@ -751,9 +757,42 @@ class _LoginDialogState extends State<LoginDialog> {
                         border: InputBorder.none,
                         contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                      onSubmitted: (_) => _handleSignUp(),
+                      onSubmitted: widget.isStaffMode ? null : (_) => _handleSignUp(),
                     ),
                   ),
+                  // Role dropdown (only for staff)
+                  if (widget.isStaffMode)
+                    Container(
+                      height: 52,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<AppRole>(
+                          value: _selectedStaffRole,
+                          isExpanded: true,
+                          dropdownColor: _fieldBg,
+                          icon: const Icon(CupertinoIcons.chevron_down, color: Colors.white54, size: 16),
+                          style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+                          items: [AppRole.council, AppRole.marker, AppRole.electrician].map((role) {
+                            String roleName = '';
+                            switch (role) {
+                              case AppRole.council: roleName = 'Council Admin'; break;
+                              case AppRole.marker: roleName = 'Map Marker'; break;
+                              case AppRole.electrician: roleName = 'Electrician'; break;
+                              default: roleName = role.name;
+                            }
+                            return DropdownMenuItem(
+                              value: role,
+                              child: Text(roleName),
+                            );
+                          }).toList(),
+                          onChanged: (AppRole? newValue) {
+                            if (newValue != null) {
+                              setState(() => _selectedStaffRole = newValue);
+                            }
+                          },
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),

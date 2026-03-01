@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../core/utils/app_notifications.dart';
 
 class ReportSidePanel extends StatefulWidget {
@@ -523,7 +524,7 @@ class _ReportContentState extends State<ReportContent> {
           setState(() => _isSubmitting = true);
           
           try {
-            await Supabase.instance.client.from('reports').insert({
+            final insertedReport = await Supabase.instance.client.from('reports').insert({
               'issue_type': _selectedIssue,
               'name': _nameController.text.trim().isEmpty ? 'Anonymous' : _nameController.text.trim(),
               'email': _emailController.text.trim(),
@@ -531,7 +532,13 @@ class _ReportContentState extends State<ReportContent> {
               'status': 'Pending',
               'pole_id': widget.poleId,
               'user_id': Supabase.instance.client.auth.currentUser?.id,
-            });
+            }).select('id').single();
+
+            // Save the report ID locally using Hive
+            final box = Hive.box<List<dynamic>>('guest_reports');
+            final currentList = box.get('report_ids', defaultValue: []) ?? [];
+            currentList.add(insertedReport['id']);
+            await box.put('report_ids', currentList);
 
             if (widget.poleId != null) {
               await Supabase.instance.client

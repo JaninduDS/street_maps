@@ -172,6 +172,12 @@ abstract class AppLocalizations {
   /// **'Staff Login'**
   String get staffLogin;
 
+  /// No description provided for @publicLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Public User Login'**
+  String get publicLogin;
+
   /// No description provided for @logOut.
   ///
   /// In en, this message translates to:
@@ -333,6 +339,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reports Submitted'**
   String get reportsSubmitted;
+
+  /// No description provided for @myPastReports.
+  ///
+  /// In en, this message translates to:
+  /// **'My Past Reports'**
+  String get myPastReports;
+
+  /// No description provided for @noPastReports.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t submitted any reports yet.'**
+  String get noPastReports;
 }
 
 class _AppLocalizationsDelegate

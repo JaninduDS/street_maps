@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../core/auth/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -21,6 +22,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _isLoadingStats = true;
   int _statValue = 0;
+  List<dynamic> _pastReports = [];
 
   @override
   void initState() {
@@ -53,8 +55,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _statValue = res.count;
       } else if (authState.role == AppRole.public) {
         // Count reports submitted by this user
-        final res = await supabase.from('reports').select().eq('user_id', authState.user!.id).count(CountOption.exact);
-        _statValue = res.count;
+        final res = await supabase.from('reports').select().eq('user_id', authState.user!.id);
+        _statValue = res.length;
+        _pastReports = res;
+      }
+      
+      // Fetch guest reports from local storage if no user is logged in
+      if (authState.user == null) {
+        final box = Hive.box<List<dynamic>>('guest_reports');
+        final localIds = box.get('report_ids', defaultValue: []) ?? [];
+        if (localIds.isNotEmpty) {
+          final res = await supabase.from('reports').select().inFilter('id', localIds).order('created_at', ascending: false);
+          _pastReports = res;
+        }
       }
     } catch (e) {
       debugPrint('Error fetching stats: $e');
@@ -227,16 +240,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   Divider(color: Colors.white.withOpacity(0.05), height: 1),
                   
-                  if (!isLoggedIn)
+                  if (!isLoggedIn) ...[
                     _buildActionTile(
                       icon: CupertinoIcons.person_solid,
-                      title: l10n.staffLogin,
+                      title: l10n.publicLogin,
                       color: AppColors.accentBlue,
                       onTap: () {
-                        showDialog(context: context, builder: (_) => const LoginDialog());
+                        showDialog(context: context, builder: (_) => const LoginDialog(isStaffMode: false));
                       },
-                    )
-                  else
+                    ),
+                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    _buildActionTile(
+                      icon: CupertinoIcons.briefcase_fill,
+                      title: l10n.staffLogin,
+                      color: Colors.orangeAccent,
+                      onTap: () {
+                        showDialog(context: context, builder: (_) => const LoginDialog(isStaffMode: true));
+                      },
+                    ),
+                  ] else
                     _buildActionTile(
                       icon: CupertinoIcons.square_arrow_right,
                       title: l10n.logOut,
@@ -249,6 +271,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ],
               ),
             ),
+
+            // === MY PAST REPORTS SECTION ===
+            if (authState.user == null || authState.role == AppRole.public) ...[
+              const SizedBox(height: 32),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'My Past Reports',
+                  style: TextStyle(
+                    fontFamily: 'GoogleSansFlex',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              if (_isLoadingStats)
+                const CircularProgressIndicator(color: AppColors.accentBlue)
+              else if (_pastReports.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    "You haven't submitted any reports yet.",
+                    style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.5), fontSize: 15),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              else
+                ..._pastReports.map((report) => _buildReportTile(report)),
+            ],
           ],
         ),
       ),
@@ -265,6 +323,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       ),
       trailing: Icon(CupertinoIcons.chevron_right, color: Colors.white.withOpacity(0.3), size: 18),
       onTap: onTap,
+    );
+  }
+
+  Widget _buildReportTile(dynamic report) {
+    final status = report['status'] ?? 'Unknown';
+    final isPending = status == 'Pending';
+    final isWorking = status == 'Working';
+    
+    Color statusColor;
+    if (isPending) statusColor = AppColors.accentRed;
+    else if (isWorking) statusColor = AppColors.accentGreen;
+    else statusColor = AppColors.accentAmber;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  report['issue_type'] ?? 'Report',
+                  style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: statusColor.withOpacity(0.3)),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(fontFamily: 'GoogleSansFlex', color: statusColor, fontSize: 12, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Pole #${report['pole_id'].toString().substring(0, 5)}',
+            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.5), fontSize: 13),
+          ),
+        ],
+      ),
     );
   }
 

@@ -5,6 +5,7 @@ import 'dart:io'; // Required for Platform check
 import 'package:flutter/foundation.dart'; // Required for kIsWeb check
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'features/map/presentation/map_screen.dart';
 import 'core/theme/theme_provider.dart';
 import 'core/theme/app_theme.dart';
@@ -28,6 +29,10 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
   }
+
+  // Initialize Hive for local storage (guest reports)
+  await Hive.initFlutter();
+  await Hive.openBox<List<dynamic>>('guest_reports');
 
   runApp(const ProviderScope(child: MyApp()));
 }
