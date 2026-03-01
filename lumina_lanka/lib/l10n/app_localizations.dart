@@ -327,6 +327,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show Only Broken'**
   String get showOnlyBroken;
+
+  /// No description provided for @reportsSubmitted.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports Submitted'**
+  String get reportsSubmitted;
 }
 
 class _AppLocalizationsDelegate

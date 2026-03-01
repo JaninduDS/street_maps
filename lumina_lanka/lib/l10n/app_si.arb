@@ -36,5 +36,6 @@
     "markAsResolved": "නිරාකරණය කළ ලෙස සලකුණු කරන්න",
     "reportAnIssue": "ගැටළුවක් වාර්තා කරන්න",
     "search": "සොයන්න",
-    "showOnlyBroken": "දෝෂ සහිත පමණි"
+    "showOnlyBroken": "දෝෂ සහිත පමණි",
+    "reportsSubmitted": "ඉදිරිපත් කළ වාර්තා"
 }

@@ -121,4 +121,7 @@ class AppLocalizationsSi extends AppLocalizations {
 
   @override
   String get showOnlyBroken => 'දෝෂ සහිත පමණි';
+
+  @override
+  String get reportsSubmitted => 'ඉදිරිපත් කළ වාර්තා';
 }

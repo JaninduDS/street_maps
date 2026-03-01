@@ -161,6 +161,38 @@ class _ReportContentState extends State<ReportContent> {
   final _poleNumberController = TextEditingController();
   final _additionalInfoController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+    _autofillFromProfile();
+  }
+
+  /// Pre-fill contact fields from the logged-in user's profile
+  Future<void> _autofillFromProfile() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    try {
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('name, phone')
+          .eq('id', user.id)
+          .maybeSingle();
+      if (mounted && profile != null) {
+        setState(() {
+          if (_nameController.text.isEmpty) {
+            _nameController.text = profile['name'] ?? '';
+          }
+          if (_emailController.text.isEmpty) {
+            _emailController.text = user.email ?? '';
+          }
+          if (_phoneController.text.isEmpty) {
+            _phoneController.text = profile['phone'] ?? '';
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
   final List<String> _issues = [
     'Single light out',
     'Streetlight is flickering',
@@ -498,6 +530,7 @@ class _ReportContentState extends State<ReportContent> {
               'phone': _phoneController.text.trim(),
               'status': 'Pending',
               'pole_id': widget.poleId,
+              'user_id': Supabase.instance.client.auth.currentUser?.id,
             });
 
             if (widget.poleId != null) {

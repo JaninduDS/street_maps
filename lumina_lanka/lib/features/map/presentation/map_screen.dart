@@ -57,6 +57,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   
   // Markers
   final List<Marker> _markers = [];
+  final List<Map<String, dynamic>> _poleDataList = []; // Raw pole data for distance calc
+  
+  // Nearest Pole Button State
+  bool _showNearestPoleButton = false;
+  Map<String, dynamic>? _nearestPoleCache; // Cached nearest pole data
+  String _nearestPoleLocation = ''; // Reverse-geocoded location of nearest pole
   
   // Mark Pole State
   LatLng? _currentMapCenter;
@@ -64,7 +70,6 @@ class _MapScreenState extends ConsumerState<MapScreen> {
   
   // Filter State
   bool _showOnlyBroken = false;
-  List<Map<String, dynamic>> _allPoleData = [];
   
   // Selected Pole Info Sidebar State
   Map<String, dynamic>? _selectedPole;
@@ -121,7 +126,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
       final List<dynamic> data = response as List<dynamic>;
 
       if (mounted) {
-        _allPoleData = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _poleDataList.clear();
+        for (var pole in data) {
+          _poleDataList.add({
+            'id': pole['id'].toString(),
+            'status': pole['status'] as String,
+            'latitude': pole['latitude'] as double,
+            'longitude': pole['longitude'] as double,
+          });
+        }
         _rebuildMarkers();
       }
     } catch (e) {
@@ -129,11 +142,12 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     }
   }
 
+
   /// Rebuild markers from stored pole data, applying the current filter
   void _rebuildMarkers() {
     setState(() {
       _markers.clear();
-      for (var pole in _allPoleData) {
+      for (var pole in _poleDataList) {
         final lat = pole['latitude'] as double;
         final lng = pole['longitude'] as double;
         final status = pole['status'] as String;
@@ -160,6 +174,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                        'latitude': lat,
                        'longitude': lng,
                      };
+                     _isSearchWardsOpen = false;
                   });
                   _mapController.move(LatLng(lat, lng), 18.0);
                 }
@@ -174,6 +189,185 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         );
       }
     });
+  }
+
+  /// Calculate Haversine distance between two points in meters
+  double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000.0; // Earth's radius in meters
+    final dLat = (lat2 - lat1) * (pi / 180.0);
+    final dLon = (lon2 - lon1) * (pi / 180.0);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180.0)) * cos(lat2 * (pi / 180.0)) *
+        sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
+  }
+
+  /// Find the nearest pole to a given reference point
+  Map<String, dynamic>? _findNearestPole(double refLat, double refLon) {
+    if (_poleDataList.isEmpty) return null;
+
+    Map<String, dynamic>? nearest;
+    double minDist = double.infinity;
+
+    for (final pole in _poleDataList) {
+      final d = _haversineDistance(
+        refLat,
+        refLon,
+        pole['latitude'] as double,
+        pole['longitude'] as double,
+      );
+      if (d < minDist) {
+        minDist = d;
+        nearest = pole;
+      }
+    }
+    return nearest;
+  }
+
+  /// Navigate to the nearest streetlight from the user's live GPS position
+  Future<void> _navigateToNearestPole() async {
+    HapticFeedback.mediumImpact();
+
+    try {
+      // Always fetch fresh position from browser/device
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Update stored position
+      _currentPosition = position;
+
+      final nearest = _findNearestPole(position.latitude, position.longitude);
+      if (nearest == null) return;
+
+      final lat = nearest['latitude'] as double;
+      final lng = nearest['longitude'] as double;
+
+      if (mounted) {
+        setState(() {
+          _selectedPole = nearest;
+          _isSearchWardsOpen = false;
+          _showNearestPoleButton = false;
+        });
+        _mapController.move(LatLng(lat, lng), 18.0);
+
+        // Reverse geocode to get city name from user's position
+        _reverseGeocode(position.latitude, position.longitude);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotifications.show(
+          context: context,
+          message: 'Unable to get your location. Please allow location access.',
+          icon: CupertinoIcons.location_slash_fill,
+          iconColor: Colors.redAccent,
+        );
+      }
+    }
+  }
+
+  /// Reverse geocode coordinates to get a human-readable location name
+  Future<void> _reverseGeocode(double lat, double lon) async {
+    try {
+      final uri = Uri.parse(
+        'https://photon.komoot.io/reverse?lat=$lat&lon=$lon',
+      );
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final features = data['features'] as List<dynamic>? ?? [];
+
+        if (features.isNotEmpty) {
+          final props = features[0]['properties'] as Map<String, dynamic>;
+          final city = props['city'] ?? props['town'] ?? props['village'] ?? props['county'] ?? '';
+          final country = props['country'] ?? '';
+          final locationName = [city, country].where((s) => s.toString().isNotEmpty).join(', ');
+
+          if (mounted && locationName.isNotEmpty) {
+            AppNotifications.show(
+              context: context,
+              message: 'Your location: $locationName',
+              icon: CupertinoIcons.location_fill,
+              iconColor: const Color(0xFF0A84FF),
+            );
+            return;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Fallback to coordinates if reverse geocoding fails
+    if (mounted) {
+      AppNotifications.show(
+        context: context,
+        message: 'Your location: ${lat.toStringAsFixed(5)}, ${lon.toStringAsFixed(5)}',
+        icon: CupertinoIcons.location_fill,
+        iconColor: const Color(0xFF0A84FF),
+      );
+    }
+  }
+
+  /// Check if the nearest pole button should be visible
+  void _checkNearestPoleVisibility() {
+    if (_poleDataList.isEmpty || _currentMapCenter == null) return;
+
+    // Find the nearest pole to the camera center
+    double minDist = double.infinity;
+    Map<String, dynamic>? closestPole;
+    for (final pole in _poleDataList) {
+      final d = _haversineDistance(
+        _currentMapCenter!.latitude,
+        _currentMapCenter!.longitude,
+        pole['latitude'] as double,
+        pole['longitude'] as double,
+      );
+      if (d < minDist) {
+        minDist = d;
+        closestPole = pole;
+      }
+    }
+
+    // Show button when camera is more than 200m from nearest pole
+    final shouldShow = minDist > 200;
+    if (shouldShow != _showNearestPoleButton) {
+      setState(() {
+        _showNearestPoleButton = shouldShow;
+        if (shouldShow && closestPole != null) {
+          // Cache the nearest pole and reverse geocode its location
+          if (_nearestPoleCache?['id'] != closestPole!['id']) {
+            _nearestPoleCache = closestPole;
+            _nearestPoleLocation = '';
+            _reverseGeocodePole(
+              closestPole['latitude'] as double,
+              closestPole['longitude'] as double,
+            );
+          }
+        }
+      });
+    }
+  }
+
+  /// Reverse geocode the nearest pole's location for display
+  Future<void> _reverseGeocodePole(double lat, double lon) async {
+    try {
+      final uri = Uri.parse('https://photon.komoot.io/reverse?lat=$lat&lon=$lon');
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final features = data['features'] as List<dynamic>? ?? [];
+        if (features.isNotEmpty) {
+          final props = features[0]['properties'] as Map<String, dynamic>;
+          final street = props['street'] ?? '';
+          final city = props['city'] ?? props['town'] ?? props['village'] ?? '';
+          final loc = [street, city].where((s) => s.toString().isNotEmpty).join(', ');
+          if (mounted && loc.isNotEmpty) {
+            setState(() => _nearestPoleLocation = loc);
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   /// Initialize location services
@@ -214,11 +408,15 @@ class _MapScreenState extends ConsumerState<MapScreen> {
           _isLoadingLocation = false;
         });
         
-        // Move map to current location
-        _mapController.move(
-          LatLng(position.latitude, position.longitude),
-          16.0,
-        );
+        // Only move map if user is within Sri Lanka bounds
+        final inSriLanka = position.latitude >= 5.8 && position.latitude <= 9.9 &&
+                            position.longitude >= 79.5 && position.longitude <= 82.0;
+        if (inSriLanka) {
+          _mapController.move(
+            LatLng(position.latitude, position.longitude),
+            16.0,
+          );
+        }
       }
     } catch (e) {
       if (mounted) setState(() => _isLoadingLocation = false);
@@ -325,7 +523,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             options: MapOptions(
               backgroundColor: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF9F9F9),
               initialCenter: _initialCenter,
-              initialZoom: 15.0,
+              initialZoom: 13.0, // Show Colombo area clearly on startup
               minZoom: 7.0, // Prevent zooming out too far
               cameraConstraint: CameraConstraint.contain(
                 bounds: LatLngBounds(
@@ -338,6 +536,8 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 if (position.rotation != _mapRotation) {
                   setState(() => _mapRotation = position.rotation);
                 }
+                // Check if nearest pole button should appear
+                _checkNearestPoleVisibility();
               },
               interactionOptions: const InteractionOptions(
                  flags: InteractiveFlag.all,
@@ -1067,6 +1267,114 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               ),
             ),
           ),
+
+          // === NEAREST STREETLIGHT CARD (Bottom Center) ===
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutCubic,
+            bottom: _showNearestPoleButton && !_isReportPanelOpen
+                ? MediaQuery.of(context).padding.bottom + 24
+                : -120, // Slide off-screen when hidden
+            left: 0,
+            right: 0,
+            child: Center(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                  child: Container(
+                  width: 340,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF1C1C1E).withValues(alpha: 0.9)
+                        : Colors.white.withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.black.withValues(alpha: 0.08),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 24,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                        children: [
+                          // Left: Text info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'Nearest Streetlight',
+                                  style: TextStyle(
+                                    fontFamily: 'GoogleSansFlex',
+                                    color: isDark ? Colors.white : Colors.black87,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                if (_nearestPoleLocation.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _nearestPoleLocation,
+                                    style: TextStyle(
+                                      fontFamily: 'GoogleSansFlex',
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.55)
+                                          : Colors.black54,
+                                      fontSize: 13,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Right: GO button
+                          GestureDetector(
+                            onTap: _navigateToNearestPole,
+                            child: Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF34C759),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'GO',
+                                  style: TextStyle(
+                                    fontFamily: 'GoogleSansFlex',
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                     ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
           
           // === LOADING INDICATOR (Initializing) ===
           if (_isLoadingLocation)
@@ -1195,6 +1503,20 @@ class _MapScreenState extends ConsumerState<MapScreen> {
               isVisible: _isSearchWardsOpen,
               leftPosition: _isWebSidebarExpanded ? 240 : 104,
               onClose: () => setState(() => _isSearchWardsOpen = false),
+              poleDataList: _poleDataList,
+              userLat: _currentPosition?.latitude ?? _currentMapCenter?.latitude,
+              userLon: _currentPosition?.longitude ?? _currentMapCenter?.longitude,
+              onPoleSelected: (pole) {
+                HapticFeedback.mediumImpact();
+                final lat = pole['latitude'] as double;
+                final lng = pole['longitude'] as double;
+                setState(() {
+                  _selectedPole = pole;
+                  _isSearchWardsOpen = false;
+                  _showNearestPoleButton = false;
+                });
+                _mapController.move(LatLng(lat, lng), 18.0);
+              },
               onLocationSelected: (lat, lng, displayName) {
                 _mapController.move(LatLng(lat, lng), 16.0);
                 setState(() => _isSearchWardsOpen = false);

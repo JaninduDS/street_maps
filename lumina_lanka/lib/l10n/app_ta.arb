@@ -36,5 +36,6 @@
     "markAsResolved": "தீர்க்கப்பட்டதாகக் குறிக்கவும்",
     "reportAnIssue": "சிக்கலைப் புகாரளி",
     "search": "தேடு",
-    "showOnlyBroken": "பழுதடைந்தவை மட்டும்"
+    "showOnlyBroken": "பழுதடைந்தவை மட்டும்",
+    "reportsSubmitted": "சமர்ப்பிக்கப்பட்ட அறிக்கைகள்"
 }

@@ -121,4 +121,7 @@ class AppLocalizationsTa extends AppLocalizations {
 
   @override
   String get showOnlyBroken => 'பழுதடைந்தவை மட்டும்';
+
+  @override
+  String get reportsSubmitted => 'சமர்ப்பிக்கப்பட்ட அறிக்கைகள்';
 }

@@ -121,4 +121,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showOnlyBroken => 'Show Only Broken';
+
+  @override
+  String get reportsSubmitted => 'Reports Submitted';
 }

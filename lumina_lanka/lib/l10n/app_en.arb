@@ -36,5 +36,6 @@
     "markAsResolved": "Mark as Resolved",
     "reportAnIssue": "Report an Issue",
     "search": "Search",
-    "showOnlyBroken": "Show Only Broken"
+    "showOnlyBroken": "Show Only Broken",
+    "reportsSubmitted": "Reports Submitted"
 }

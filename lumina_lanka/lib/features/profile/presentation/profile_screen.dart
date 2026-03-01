@@ -51,6 +51,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         // Count total poles in the system
         final res = await supabase.from('poles').select().count(CountOption.exact);
         _statValue = res.count;
+      } else if (authState.role == AppRole.public) {
+        // Count reports submitted by this user
+        final res = await supabase.from('reports').select().eq('user_id', authState.user!.id).count(CountOption.exact);
+        _statValue = res.count;
       }
     } catch (e) {
       debugPrint('Error fetching stats: $e');
@@ -297,7 +301,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case AppRole.council: return l10n.statTotalPoles;
       case AppRole.electrician: return l10n.statIssuesResolved;
       case AppRole.marker: return l10n.statPolesMarked;
-      case AppRole.public: return '';
+      case AppRole.public: return 'Reports Submitted';
     }
   }
 }

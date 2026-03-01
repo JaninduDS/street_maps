@@ -13,10 +13,15 @@ class LoginDialog extends StatefulWidget {
 class _LoginDialogState extends State<LoginDialog> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
+  final _nameFocus = FocusNode();
+  final _phoneFocus = FocusNode();
   bool _isLoading = false;
   bool _isStep2 = false; // false = email step, true = password step
+  bool _isSignUpMode = false; // true = sign up step
 
   static const _blue = Color(0xFF0A84FF);
   static const _bgColor = Color(0xFF1C1C1E);
@@ -46,6 +51,57 @@ class _LoginDialogState extends State<LoginDialog> {
     }
   }
 
+  Future<void> _handleSignUp() async {
+    final name = _nameController.text.trim();
+    final password = _passwordController.text.trim();
+    if (name.isEmpty || password.length < 6) {
+      AppNotifications.show(
+        context: context,
+        message: password.length < 6 ? 'Password must be at least 6 characters' : 'Please enter your name',
+        icon: CupertinoIcons.exclamationmark_triangle_fill,
+        iconColor: Colors.redAccent,
+      );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final res = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text.trim(),
+        password: password,
+        data: {'name': name},
+      );
+      // Insert a public profile row
+      if (res.user != null) {
+        await Supabase.instance.client.from('profiles').upsert({
+          'id': res.user!.id,
+          'role': 'public',
+          'name': name,
+          'phone': _phoneController.text.trim(),
+        });
+      }
+      if (mounted) {
+        AppNotifications.show(
+          context: context,
+          message: 'Account created successfully!',
+          icon: CupertinoIcons.check_mark_circled_solid,
+          iconColor: Colors.green,
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        AppNotifications.show(
+          context: context,
+          message: 'Sign Up Failed: ${e.toString()}',
+          icon: CupertinoIcons.exclamationmark_triangle_fill,
+          iconColor: Colors.redAccent,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   void _handleContinue() {
     final email = _emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
@@ -65,6 +121,8 @@ class _LoginDialogState extends State<LoginDialog> {
     super.initState();
     _emailFocus.addListener(() => setState(() {}));
     _passwordFocus.addListener(() => setState(() {}));
+    _nameFocus.addListener(() => setState(() {}));
+    _phoneFocus.addListener(() => setState(() {}));
   }
 
   void _goBack() {
@@ -75,8 +133,12 @@ class _LoginDialogState extends State<LoginDialog> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _nameController.dispose();
+    _phoneController.dispose();
     _emailFocus.dispose();
     _passwordFocus.dispose();
+    _nameFocus.dispose();
+    _phoneFocus.dispose();
     super.dispose();
   }
 
@@ -129,9 +191,11 @@ class _LoginDialogState extends State<LoginDialog> {
                       ),
                     );
                   },
-                  child: _isStep2
-                      ? _buildStep2(key: const ValueKey('step2'))
-                      : _buildStep1(key: const ValueKey('step1')),
+                  child: _isSignUpMode
+                      ? _buildSignUpStep(key: const ValueKey('signup'))
+                      : _isStep2
+                          ? _buildStep2(key: const ValueKey('step2'))
+                          : _buildStep1(key: const ValueKey('step1')),
                 ),
               ],
             ),
@@ -272,6 +336,31 @@ class _LoginDialogState extends State<LoginDialog> {
                     fontWeight: FontWeight.w500, // Reduced from w600
                     color: Colors.white,
                   ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Create Account link
+            GestureDetector(
+              onTap: () {
+                if (_emailController.text.trim().isEmpty || !_emailController.text.contains('@')) {
+                  AppNotifications.show(
+                    context: context,
+                    message: 'Please enter a valid email first',
+                    icon: CupertinoIcons.exclamationmark_triangle_fill,
+                    iconColor: Colors.redAccent,
+                  );
+                  return;
+                }
+                setState(() => _isSignUpMode = true);
+              },
+              child: Text(
+                'New here? Create an Account  \u203a',
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: _blue.withOpacity(0.9),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -506,6 +595,200 @@ class _LoginDialogState extends State<LoginDialog> {
               },
               child: const Text(
                 'Forgot Password?',
+                style: TextStyle(
+                  fontFamily: 'GoogleSansFlex',
+                  color: _blue,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────
+  // SIGN UP STEP
+  // ─────────────────────────────────────────────
+  Widget _buildSignUpStep({Key? key}) {
+    return SizedBox(
+      key: key,
+      width: 800,
+      height: 560,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 100),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 8),
+            // App icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFF34C759).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                CupertinoIcons.person_badge_plus_fill,
+                color: Color(0xFF34C759),
+                size: 36,
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Title
+            const Text(
+              'Create Your Account',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.5,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Your details will autofill when reporting issues.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: Colors.white.withOpacity(0.45),
+                fontSize: 15,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 28),
+            // Combined fields card
+            Container(
+              decoration: BoxDecoration(
+                color: _fieldBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _borderColor),
+              ),
+              child: Column(
+                children: [
+                  // Email row (read-only)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: _borderColor.withOpacity(0.8))),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Email', style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                              const SizedBox(height: 2),
+                              Text(_emailController.text.trim(), style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Name field
+                  Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: _borderColor.withOpacity(0.8))),
+                    ),
+                    child: TextField(
+                      controller: _nameController,
+                      focusNode: _nameFocus,
+                      autofocus: true,
+                      cursorColor: _blue,
+                      style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: 'Full Name',
+                        hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.3), fontSize: 16),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  // Password field
+                  Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: _borderColor.withOpacity(0.8))),
+                    ),
+                    child: TextField(
+                      controller: _passwordController,
+                      focusNode: _passwordFocus,
+                      obscureText: true,
+                      cursorColor: _blue,
+                      style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: 'Password (min. 6 chars)',
+                        hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.3), fontSize: 16),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                  // Phone field (optional)
+                  Container(
+                    height: 52,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: _phoneController,
+                      focusNode: _phoneFocus,
+                      cursorColor: _blue,
+                      keyboardType: TextInputType.phone,
+                      style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+                      decoration: InputDecoration(
+                        hintText: 'Phone (optional)',
+                        hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.3), fontSize: 16),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      onSubmitted: (_) => _handleSignUp(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Sign Up button
+            SizedBox(
+              width: 360,
+              height: 60,
+              child: CupertinoButton(
+                color: const Color(0xFF34C759),
+                borderRadius: BorderRadius.circular(14),
+                padding: EdgeInsets.zero,
+                onPressed: _isLoading ? null : _handleSignUp,
+                child: _isLoading
+                    ? const CupertinoActivityIndicator(color: Colors.white)
+                    : const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontFamily: 'GoogleSansFlex',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Back to sign in
+            GestureDetector(
+              onTap: () => setState(() {
+                _isSignUpMode = false;
+                _passwordController.clear();
+              }),
+              child: const Text(
+                'Already have an account? Sign in  \u203a',
                 style: TextStyle(
                   fontFamily: 'GoogleSansFlex',
                   color: _blue,

@@ -1,16 +1,23 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'dart:math';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../../core/services/google_places_service.dart';
 
 class SearchWardsSidebar extends StatefulWidget {
   final bool isVisible;
   final double leftPosition;
   final VoidCallback onClose;
   final void Function(double lat, double lng, String displayName)? onLocationSelected;
+  final List<Map<String, dynamic>> poleDataList;
+  final void Function(Map<String, dynamic> pole)? onPoleSelected;
+  final double? userLat;
+  final double? userLon;
 
   const SearchWardsSidebar({
     super.key,
@@ -18,6 +25,10 @@ class SearchWardsSidebar extends StatefulWidget {
     required this.leftPosition,
     required this.onClose,
     this.onLocationSelected,
+    this.poleDataList = const [],
+    this.onPoleSelected,
+    this.userLat,
+    this.userLon,
   });
 
   @override
@@ -27,19 +38,13 @@ class SearchWardsSidebar extends StatefulWidget {
 class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  List<Map<String, dynamic>> _searchResults = [];
+  List<PlacePrediction> _searchResults = [];
   bool _isSearching = false;
-  bool _isSearchActive = false;
   Timer? _debounce;
+  String _sessionToken = GooglePlacesService.generateSessionToken();
+  List<Map<String, dynamic>> _nearestPoles = [];
+  final Map<String, String> _poleLocations = {}; // pole id -> location name
 
-  static const List<String> _wards = [
-    'Mirihana South', 'Mirihana North', 'Madiwela', 'Pragathipura', 'Udahamulla',
-    'Thalapathpitiya', 'Pamunuwa', 'Thalawathugoda', 'Kalalgoda', 'Depanama',
-    'Kottawa West', 'Kottawa East', 'Rukmale', 'Makumbura', 'Kottawa South',
-    'Kottawa Town', 'Pannipitiya', 'Maharagama South', 'Maharagama North',
-    'Pathiragoda', 'Navinna', 'Gangodavila', 'Wattegedara', 'Godigamuwa North',
-    'Godigamuwa South',
-  ];
 
   double get _currentWidth => widget.isVisible ? 420.0 : 0.0;
 
@@ -49,19 +54,25 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
     _searchFocusNode.addListener(() {
       if (mounted) setState(() {});
     });
+    _computeNearestPoles();
   }
 
   @override
   void didUpdateWidget(covariant SearchWardsSidebar oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.isVisible && !oldWidget.isVisible) {
-      // Auto-focus search when opened
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) _searchFocusNode.requestFocus();
       });
+      _computeNearestPoles();
     }
     if (!widget.isVisible && oldWidget.isVisible) {
       _clearSearch();
+    }
+    if (widget.poleDataList.length != oldWidget.poleDataList.length ||
+        widget.userLat != oldWidget.userLat ||
+        widget.userLon != oldWidget.userLon) {
+      _computeNearestPoles();
     }
   }
 
@@ -76,53 +87,114 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
   void _clearSearch() {
     _debounce?.cancel();
     setState(() {
-      _isSearchActive = false;
       _searchResults = [];
       _searchController.clear();
     });
     _searchFocusNode.unfocus();
+    // Reset session token for next search session
+    _sessionToken = GooglePlacesService.generateSessionToken();
   }
 
-  void _onSearchSubmitted(String query) {
-    if (query.trim().isEmpty) return;
-    setState(() => _isSearchActive = true);
-    _searchFocusNode.unfocus();
-    _searchAddress(query);
+  double _haversine(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371000.0;
+    final dLat = (lat2 - lat1) * (pi / 180.0);
+    final dLon = (lon2 - lon1) * (pi / 180.0);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(lat1 * (pi / 180.0)) * cos(lat2 * (pi / 180.0)) *
+            sin(dLon / 2) * sin(dLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return R * c;
   }
 
-  Future<void> _searchAddress(String query, {bool isAutoSearch = false}) async {
+  void _computeNearestPoles() {
+    if (widget.poleDataList.isEmpty) return;
+    final refLat = widget.userLat;
+    final refLon = widget.userLon;
+    if (refLat == null || refLon == null) return;
+
+    final sorted = List<Map<String, dynamic>>.from(widget.poleDataList);
+    sorted.sort((a, b) {
+      final dA = _haversine(refLat, refLon, a['latitude'] as double, a['longitude'] as double);
+      final dB = _haversine(refLat, refLon, b['latitude'] as double, b['longitude'] as double);
+      return dA.compareTo(dB);
+    });
+
+    final top5 = sorted.take(5).toList();
+    if (mounted) setState(() => _nearestPoles = top5);
+
+    // Reverse geocode each pole
+    for (final pole in top5) {
+      final id = pole['id'] as String;
+      if (!_poleLocations.containsKey(id)) {
+        _reverseGeocodePoleLocation(id, pole['latitude'] as double, pole['longitude'] as double);
+      }
+    }
+  }
+
+  Future<void> _reverseGeocodePoleLocation(String poleId, double lat, double lon) async {
+    try {
+      final uri = Uri.parse('https://photon.komoot.io/reverse?lat=$lat&lon=$lon');
+      final response = await http.get(uri);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final features = data['features'] as List<dynamic>? ?? [];
+        if (features.isNotEmpty) {
+          final props = features[0]['properties'] as Map<String, dynamic>;
+          final street = props['street'] ?? '';
+          final city = props['city'] ?? props['town'] ?? props['village'] ?? '';
+          final loc = [street, city].where((s) => s.toString().isNotEmpty).join(', ');
+          if (mounted && loc.isNotEmpty) {
+            setState(() => _poleLocations[poleId] = loc);
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  void _onSearchChanged(String value) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    if (value.trim().isEmpty) {
+      setState(() => _searchResults = []);
+      return;
+    }
+
+    // 300ms debounce for snappy feel
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      _fetchSuggestions(value);
+    });
+  }
+
+  Future<void> _fetchSuggestions(String query) async {
     if (query.trim().isEmpty) return;
     setState(() => _isSearching = true);
 
-    try {
-      final uri = Uri.parse(
-        'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=8&countrycodes=lk',
-      );
-      final response = await http.get(uri, headers: {
-        'User-Agent': 'LuminaLanka/1.0 (Flutter App)',
-      });
+    final results = await GooglePlacesService.autocomplete(
+      query,
+      sessionToken: _sessionToken,
+    );
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        if (mounted) {
-          setState(() {
-            _searchResults = data.map((item) => {
-              'lat': double.parse(item['lat']),
-              'lon': double.parse(item['lon']),
-              'display_name': item['display_name'] as String,
-            }).toList();
-            _isSearching = false;
-            if (isAutoSearch && _searchResults.isNotEmpty) {
-              _isSearchActive = true;
-            }
-          });
-        }
-      } else {
-        if (mounted) setState(() => _isSearching = false);
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isSearching = false);
+    if (mounted) {
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
     }
+  }
+
+  Future<void> _selectResult(PlacePrediction prediction) async {
+    HapticFeedback.mediumImpact();
+
+    if (prediction.lat != null && prediction.lon != null) {
+      widget.onLocationSelected?.call(
+        prediction.lat!,
+        prediction.lon!,
+        prediction.description,
+      );
+    }
+
+    _clearSearch();
+    widget.onClose();
   }
 
   @override
@@ -212,13 +284,18 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
 
                       const SizedBox(height: 16),
 
-                      // Content: Search Results OR Wards List
+                      // Content: Search Results + Nearest Poles below
                       Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 250),
-                          child: _isSearchActive || _searchController.text.isNotEmpty
-                              ? _buildSearchResults()
-                              : _buildWardsList(),
+                        child: ListView(
+                          padding: EdgeInsets.zero,
+                          children: [
+                            // Search results first (when typing)
+                            if (_searchController.text.isNotEmpty) ...
+                              _buildSearchResultsList(),
+                            // Nearest streetlight recommendations below
+                            if (_nearestPoles.isNotEmpty)
+                              _buildNearestPolesSection(),
+                          ],
                         ),
                       ),
                     ],
@@ -237,9 +314,7 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
         color: const Color(0xFF1E1E1E),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _searchFocusNode.hasFocus
-              ? const Color(0xFF0A84FF).withValues(alpha: 0.8)
-              : Colors.white.withValues(alpha: 0.1),
+          color: Colors.white.withValues(alpha: 0.1),
           width: 1.5,
         ),
       ),
@@ -253,26 +328,16 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
               focusNode: _searchFocusNode,
               style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
               decoration: InputDecoration(
-                hintText: 'Search',
+                hintText: 'Search places...',
                 hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withValues(alpha: 0.5), fontSize: 16),
                 border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                enabledBorder: InputBorder.none,
                 isDense: true,
                 contentPadding: const EdgeInsets.only(bottom: 2),
               ),
-              onChanged: (value) {
-                if (_debounce?.isActive ?? false) _debounce!.cancel();
-                _debounce = Timer(const Duration(milliseconds: 500), () {
-                  if (value.trim().isNotEmpty) {
-                    _searchAddress(value, isAutoSearch: true);
-                  } else {
-                    setState(() {
-                      _isSearchActive = false;
-                      _searchResults.clear();
-                    });
-                  }
-                });
-              },
-              onSubmitted: _onSearchSubmitted,
+              onChanged: _onSearchChanged,
+              textInputAction: TextInputAction.search,
             ),
           ),
           if (_searchController.text.isNotEmpty)
@@ -285,159 +350,200 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
     );
   }
 
-  Widget _buildWardsList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-          child: Text(
-            'Maharagama Urban Council Wards',
-            style: TextStyle(
-              fontFamily: 'GoogleSansFlex',
-              color: Colors.white.withValues(alpha: 0.6),
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+
+  Widget _buildNearestPolesSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              'Nearby Streetlights',
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.5),
+                letterSpacing: 0.5,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _wards.length,
-            itemBuilder: (context, index) {
-              return _buildWardTile(
-                wardName: _wards[index],
-                wardNumber: index + 1,
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
+          ..._nearestPoles.map((pole) {
+            final id = pole['id'] as String;
+            final location = _poleLocations[id] ?? '';
+            final dist = _haversine(
+              widget.userLat!, widget.userLon!,
+              pole['latitude'] as double, pole['longitude'] as double,
+            );
+            final distText = dist < 1000
+                ? '${dist.toInt()}m away'
+                : '${(dist / 1000).toStringAsFixed(1)}km away';
 
-  Widget _buildWardTile({required String wardName, required int wardNumber}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6.0),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          _searchController.text = '$wardName, Maharagama';
-          _onSearchSubmitted('$wardName, Maharagama');
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF0A84FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 16),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  'Ward $wardNumber - $wardName',
-                  style: const TextStyle(
-                    fontFamily: 'GoogleSansFlex',
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.08),
                   ),
                 ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            location.isNotEmpty ? location : 'Streetlight',
+                            style: const TextStyle(
+                              fontFamily: 'GoogleSansFlex',
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            distText,
+                            style: TextStyle(
+                              fontFamily: 'GoogleSansFlex',
+                              color: Colors.white.withValues(alpha: 0.45),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () {
+                        HapticFeedback.mediumImpact();
+                        widget.onPoleSelected?.call(pole);
+                      },
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF34C759),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'GO',
+                            style: TextStyle(
+                              fontFamily: 'GoogleSansFlex',
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
+            );
+          }),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
 
-  Widget _buildSearchResults() {
+  List<Widget> _buildSearchResultsList() {
     if (_isSearching) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: CircularProgressIndicator(color: Color(0xFF0A84FF)),
+      return [
+        const Center(
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: CircularProgressIndicator(color: Color(0xFF0A84FF)),
+          ),
         ),
-      );
+      ];
     }
 
     if (_searchResults.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Text(
-            'No results found',
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 14),
+      return [
+        Center(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Text(
+              'No results found',
+              style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 14),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return _searchResults.map((prediction) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 6, left: 16, right: 16),
+        child: InkWell(
+          onTap: () => _selectResult(prediction),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 16),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        prediction.mainText,
+                        style: const TextStyle(
+                          fontFamily: 'GoogleSansFlex',
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (prediction.secondaryText.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          prediction.secondaryText,
+                          style: TextStyle(
+                            fontFamily: 'GoogleSansFlex',
+                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final result = _searchResults[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: InkWell(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              widget.onLocationSelected?.call(
-                result['lat'],
-                result['lon'],
-                result['display_name'],
-              );
-              _clearSearch();
-              widget.onClose();
-            },
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(CupertinoIcons.location_solid, color: Colors.white, size: 16),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      result['display_name'],
-                      style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 14),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
+    }).toList();
   }
 }
