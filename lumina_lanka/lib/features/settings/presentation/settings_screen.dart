@@ -2,9 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../l10n/app_localizations.dart'; // <--- IMPORT TRANSLATIONS
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/theme_provider.dart';
+import '../../../core/theme/locale_provider.dart'; // <--- IMPORT LOCALE PROVIDER
 import '../../../shared/widgets/glass_card.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -17,9 +19,81 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  void _showLanguagePicker(BuildContext context, WidgetRef ref, Locale currentLocale) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GlassCard(
+        borderRadius: 24,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Select Language',
+              style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
+            _buildLangOption(context, ref, 'English', 'en', currentLocale.languageCode == 'en'),
+            const SizedBox(height: 12),
+            _buildLangOption(context, ref, 'සිංහල', 'si', currentLocale.languageCode == 'si'),
+            const SizedBox(height: 12),
+            _buildLangOption(context, ref, 'தமிழ்', 'ta', currentLocale.languageCode == 'ta'),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLangOption(BuildContext context, WidgetRef ref, String title, String code, bool isSelected) {
+    return GestureDetector(
+      onTap: () {
+        ref.read(localeProvider.notifier).state = Locale(code);
+        Navigator.pop(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF0A84FF).withOpacity(0.2) : Colors.white.withOpacity(0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? const Color(0xFF0A84FF) : Colors.white.withOpacity(0.1)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontFamily: 'GoogleSansFlex',
+                color: isSelected ? Colors.white : Colors.white70,
+                fontSize: 16,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            if (isSelected) const Icon(CupertinoIcons.check_mark_circled_solid, color: Color(0xFF0A84FF)),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
+    final currentLocale = ref.watch(localeProvider);
+    
+    // Load the translations for the current context
+    // (If this shows a red error, run `flutter pub get` in your terminal)
+    final l10n = AppLocalizations.of(context);
+
+    String getLanguageName(String code) {
+      switch (code) {
+        case 'si': return 'සිංහල';
+        case 'ta': return 'தமிழ்';
+        default: return 'English';
+      }
+    }
 
     return Scaffold(
       backgroundColor: AppColors.bgPrimary,
@@ -30,29 +104,30 @@ class SettingsScreen extends ConsumerWidget {
           icon: const Icon(CupertinoIcons.back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Settings',
-          style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
+        title: Text(
+          l10n?.settings ?? 'Settings', // <--- TRANSLATED
+          style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(24.0),
         children: [
           // === APPEARANCE ===
-          const Padding(
-            padding: EdgeInsets.only(left: 8, bottom: 8),
+          Padding(
+            padding: const EdgeInsets.only(left: 8, bottom: 8),
             child: Text(
-              'APPEARANCE',
-              style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
+              l10n?.appearance ?? 'APPEARANCE', // <--- TRANSLATED
+              style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1),
             ),
           ),
           GlassCard(
             padding: EdgeInsets.zero,
             child: Column(
               children: [
+                // 1. DARK MODE TOGGLE (Restored!)
                 ListTile(
                   leading: const Icon(CupertinoIcons.moon_stars_fill, color: Colors.white),
-                  title: const Text('Dark Mode', style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white)),
+                  title: Text(l10n?.darkMode ?? 'Dark Mode', style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white)), // <--- TRANSLATED
                   trailing: CupertinoSwitch(
                     activeColor: AppColors.accentGreen,
                     value: themeMode == ThemeMode.dark,
@@ -62,20 +137,23 @@ class SettingsScreen extends ConsumerWidget {
                   ),
                 ),
                 Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                
+                // 2. LANGUAGE PICKER
                 ListTile(
                   leading: const Icon(CupertinoIcons.globe, color: Colors.white),
-                  title: const Text('Language', style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white)),
+                  title: Text(l10n?.language ?? 'Language', style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white)), // <--- TRANSLATED
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('English', style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.5))),
+                      Text(
+                        getLanguageName(currentLocale.languageCode), 
+                        style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.5))
+                      ),
                       const SizedBox(width: 8),
                       Icon(CupertinoIcons.chevron_right, color: Colors.white.withOpacity(0.3), size: 16),
                     ],
                   ),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sinhala & Tamil coming soon!')));
-                  },
+                  onTap: () => _showLanguagePicker(context, ref, currentLocale),
                 ),
               ],
             ),
