@@ -42,6 +42,10 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultBgColor = isDark ? AppColors.bgSecondary : Colors.white;
+    final defaultBorderColor = isDark ? AppColors.borderGlass : Colors.black.withOpacity(0.05);
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(borderRadius),
       child: BackdropFilter(
@@ -52,11 +56,11 @@ class GlassCard extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: AppColors.bgSecondary.withOpacity(backgroundOpacity),
+            color: defaultBgColor.withOpacity(backgroundOpacity),
             borderRadius: BorderRadius.circular(borderRadius),
             border: showBorder
                 ? Border.all(
-                    color: borderColor ?? AppColors.borderGlass,
+                    color: borderColor ?? defaultBorderColor,
                     width: 1,
                   )
                 : null,
@@ -88,6 +92,10 @@ class GlassBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultBgColor = isDark ? AppColors.bgSecondary : Colors.white;
+    final defaultBorderColor = isDark ? AppColors.borderGlass : Colors.black.withOpacity(0.05);
+
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       child: BackdropFilter(
@@ -97,10 +105,10 @@ class GlassBottomSheet extends StatelessWidget {
             maxHeight: MediaQuery.of(context).size.height * maxHeightFraction,
           ),
           decoration: BoxDecoration(
-            color: AppColors.bgSecondary.withOpacity(0.85),
+            color: defaultBgColor.withOpacity(0.85),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             border: Border.all(
-              color: AppColors.borderGlass,
+              color: defaultBorderColor,
               width: 1,
             ),
           ),

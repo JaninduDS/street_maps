@@ -86,18 +86,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final userName = authState.user?.userMetadata?['name'] ?? 
       (isLoggedIn ? userEmail.split('@')[0].toUpperCase() : l10n.guestUser);
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
+
     return Scaffold(
-      backgroundColor: AppColors.bgPrimary,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(CupertinoIcons.back, color: Colors.white),
+          icon: Icon(CupertinoIcons.back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Profile',
-          style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontWeight: FontWeight.w600),
+          style: TextStyle(fontFamily: 'GoogleSansFlex', color: textColor, fontWeight: FontWeight.w600),
         ),
       ),
       body: SingleChildScrollView(
@@ -116,13 +118,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     height: 100,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: _getRoleColor(authState.role).withOpacity(0.2),
-                      border: Border.all(color: _getRoleColor(authState.role), width: 2),
+                      color: _getRoleColor(context, authState.role).withOpacity(0.2),
+                      border: Border.all(color: _getRoleColor(context, authState.role), width: 2),
                     ),
                     child: Icon(
                       _getRoleIcon(authState.role),
                       size: 48,
-                      color: _getRoleColor(authState.role),
+                      color: _getRoleColor(context, authState.role),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -130,9 +132,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   // Name & Email
                   Text(
                     userName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'GoogleSansFlex',
-                      color: Colors.white,
+                      color: textColor,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -142,7 +144,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     userEmail,
                     style: TextStyle(
                       fontFamily: 'GoogleSansFlex',
-                      color: Colors.white.withOpacity(0.6),
+                      color: (isDark ? Colors.white : Colors.black).withOpacity(0.6),
                       fontSize: 14,
                     ),
                   ),
@@ -152,15 +154,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: _getRoleColor(authState.role).withOpacity(0.15),
+                      color: _getRoleColor(context, authState.role).withOpacity(0.15),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _getRoleColor(authState.role).withOpacity(0.5)),
+                      border: Border.all(color: _getRoleColor(context, authState.role).withOpacity(0.5)),
                     ),
                     child: Text(
                       _getRoleName(authState.role, l10n),
                       style: TextStyle(
                         fontFamily: 'GoogleSansFlex',
-                        color: _getRoleColor(authState.role),
+                        color: _getRoleColor(context, authState.role),
                         fontWeight: FontWeight.w600,
                         fontSize: 13,
                         letterSpacing: 0.5,
@@ -196,22 +198,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             _getStatLabel(authState.role, l10n),
                             style: TextStyle(
                               fontFamily: 'GoogleSansFlex',
-                              color: Colors.white.withOpacity(0.6),
+                              color: (isDark ? Colors.white : Colors.black).withOpacity(0.6),
                               fontSize: 14,
                             ),
                           ),
                           const SizedBox(height: 4),
                           _isLoadingStats
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 20,
                                   width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: textColor),
                                 )
                               : Text(
                                   _statValue.toString(),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontFamily: 'GoogleSansFlex',
-                                    color: Colors.white,
+                                    color: textColor,
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -238,7 +240,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
                     },
                   ),
-                  Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                  Divider(color: (isDark ? Colors.white : Colors.black).withOpacity(0.05), height: 1),
                   
                   if (!isLoggedIn) ...[
                     _buildActionTile(
@@ -249,7 +251,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         showDialog(context: context, builder: (_) => const LoginDialog(isStaffMode: false));
                       },
                     ),
-                    Divider(color: Colors.white.withOpacity(0.05), height: 1),
+                    Divider(color: (isDark ? Colors.white : Colors.black).withOpacity(0.05), height: 1),
                     _buildActionTile(
                       icon: CupertinoIcons.briefcase_fill,
                       title: l10n.staffLogin,
@@ -275,7 +277,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             // === MY PAST REPORTS SECTION ===
             if (authState.user == null || authState.role == AppRole.public) ...[
               const SizedBox(height: 32),
-              const Align(
+              Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'My Past Reports',
@@ -283,7 +285,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     fontFamily: 'GoogleSansFlex',
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: textColor,
                   ),
                 ),
               ),
@@ -295,12 +297,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     "You haven't submitted any reports yet.",
-                    style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.5), fontSize: 15),
+                    style: TextStyle(fontFamily: 'GoogleSansFlex', color: (isDark ? Colors.white : Colors.black).withOpacity(0.5), fontSize: 15),
                     textAlign: TextAlign.center,
                   ),
                 )
@@ -313,15 +315,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildActionTile({required IconData icon, required String title, required VoidCallback onTap, Color color = Colors.white}) {
+  Widget _buildActionTile({required IconData icon, required String title, required VoidCallback onTap, Color? color}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultColor = color ?? (isDark ? Colors.white : Colors.black);
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-      leading: Icon(icon, color: color),
+      leading: Icon(icon, color: defaultColor),
       title: Text(
         title,
-        style: TextStyle(fontFamily: 'GoogleSansFlex', color: color, fontSize: 16, fontWeight: FontWeight.w500),
+        style: TextStyle(fontFamily: 'GoogleSansFlex', color: defaultColor, fontSize: 16, fontWeight: FontWeight.w500),
       ),
-      trailing: Icon(CupertinoIcons.chevron_right, color: Colors.white.withOpacity(0.3), size: 18),
+      trailing: Icon(CupertinoIcons.chevron_right, color: (isDark ? Colors.white : Colors.black).withOpacity(0.3), size: 18),
       onTap: onTap,
     );
   }
@@ -330,6 +335,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final status = report['status'] ?? 'Unknown';
     final isPending = status == 'Pending';
     final isWorking = status == 'Working';
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : Colors.black;
     
     Color statusColor;
     if (isPending) statusColor = AppColors.accentRed;
@@ -340,9 +347,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: (isDark ? Colors.white : Colors.black).withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: (isDark ? Colors.white : Colors.black).withOpacity(0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,7 +360,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               Expanded(
                 child: Text(
                   report['issue_type'] ?? 'Report',
-                  style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontFamily: 'GoogleSansFlex', color: textColor, fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
               Container(
@@ -373,7 +380,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(height: 8),
           Text(
             'Pole #${report['pole_id'].toString().substring(0, 5)}',
-            style: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.5), fontSize: 13),
+            style: TextStyle(fontFamily: 'GoogleSansFlex', color: (isDark ? Colors.white : Colors.black).withOpacity(0.5), fontSize: 13),
           ),
         ],
       ),
@@ -381,12 +388,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   // Helper methods for dynamic UI
-  Color _getRoleColor(AppRole role) {
+  Color _getRoleColor(BuildContext context, AppRole role) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (role) {
       case AppRole.council: return AppColors.accentGreen;
       case AppRole.electrician: return AppColors.accentAmber;
       case AppRole.marker: return AppColors.accentBlue;
-      case AppRole.public: return Colors.white54;
+      case AppRole.public: return isDark ? Colors.white54 : Colors.black54;
     }
   }
 
