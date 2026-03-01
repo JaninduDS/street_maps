@@ -14,6 +14,7 @@ import '../../core/auth/auth_provider.dart';
 import '../../core/utils/app_notifications.dart';
 import '../../features/auth/presentation/widgets/login_dialog.dart';
 import '../../features/dashboard/presentation/council_dashboard.dart';
+import '../../features/dashboard/presentation/staff_management_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart'; // <-- PROFILE IMPORT
 import '../../features/tasks/presentation/electrician_tasks_screen.dart';
 
@@ -466,6 +467,15 @@ class _WebSidebarState extends ConsumerState<WebSidebar> {
               Navigator.push(context, MaterialPageRoute(builder: (context) => const CouncilDashboard()));
             },
             color: const Color(0xFF34C759), 
+          ),
+          const SizedBox(height: 8),
+          _buildNavTile(
+            icon: CupertinoIcons.person_2_alt,
+            title: 'Manage Staff',
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const StaffManagementScreen()));
+            },
+            color: const Color(0xFF9E47FF), // Purple
           ),
         ],
         if (authState.role == AppRole.electrician) ...[
