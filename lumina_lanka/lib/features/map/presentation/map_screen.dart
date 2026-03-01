@@ -1520,6 +1520,16 @@ class _MapScreenState extends ConsumerState<MapScreen> {
                 leftPosition: isDesktop ? baseLeft : null,
                 poleId: _selectedPole?['id'],
                 onClose: () => setState(() => _isReportPanelOpen = false),
+                onSuccess: () {
+                  // Instantly update local selected pole status to reflect change immediately in UI
+                  if (mounted && _selectedPole != null) {
+                    setState(() {
+                      _selectedPole!['status'] = 'Reported';
+                    });
+                  }
+                  // Fetch the latest data from server
+                  _fetchPolesFromSupabase();
+                },
               );
             },
           ),

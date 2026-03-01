@@ -54,6 +54,7 @@ class MyApp extends ConsumerWidget {
       themeMode: themeMode,               // 1. Listens to the toggle
       theme: AppTheme.lightTheme,         // 2. Uses the new light theme
       darkTheme: AppTheme.darkTheme,      // 3. Uses your existing dark theme
+      themeAnimationDuration: Duration.zero, // Skip crossfade to prevent grey intermediate frame
       builder: (context, child) {
         return ScrollConfiguration(
           behavior: const MaterialScrollBehavior().copyWith(

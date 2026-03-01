@@ -1,22 +1,28 @@
+import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:glassmorphism/glassmorphism.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 import '../../../core/utils/app_notifications.dart';
 
 class ReportSidePanel extends StatefulWidget {
   final bool isOpen;
-  final VoidCallback onClose;
   final double? leftPosition;
   final String? poleId;
+  final VoidCallback onClose;
+  final VoidCallback? onSuccess; // new callback
 
   const ReportSidePanel({
     super.key,
     required this.isOpen,
-    required this.onClose,
     this.leftPosition,
     this.poleId,
+    required this.onClose,
+    this.onSuccess,
   });
 
   @override
@@ -126,7 +132,11 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
                     ),
                     const SizedBox(height: 24),
                     // Report Content (inline, not nested widget)
-                    ReportContent(onClose: widget.onClose, poleId: widget.poleId),
+                    ReportContent(
+                      onClose: widget.onClose,
+                      poleId: widget.poleId,
+                      onSuccess: widget.onSuccess,
+                    ),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -142,8 +152,14 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
 class ReportContent extends StatefulWidget {
   final VoidCallback onClose;
   final String? poleId;
+  final VoidCallback? onSuccess;
 
-  const ReportContent({super.key, required this.onClose, this.poleId});
+  const ReportContent({
+    super.key,
+    required this.onClose,
+    this.poleId,
+    this.onSuccess,
+  });
 
   @override
   State<ReportContent> createState() => _ReportContentState();
@@ -151,6 +167,11 @@ class ReportContent extends StatefulWidget {
 
 class _ReportContentState extends State<ReportContent> {
   bool _isSubmitting = false;
+  bool _isUploadingImage = false;
+  
+  // Image Upload Data
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   
   // Form Data
   String? _selectedIssue;
@@ -263,36 +284,93 @@ class _ReportContentState extends State<ReportContent> {
               _buildTextField("e.g. landmarks, side of street", _additionalInfoController, maxLines: 3),
               const SizedBox(height: 16),
               // Upload Photo Button
-              GestureDetector(
-                onTap: () {
-                  // TODO: Implement photo upload
-                },
-                child: Container(
+              if (_selectedImage != null)
+                Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: const Color(0xFF0A84FF).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    border: Border.all(color: const Color(0xFF0A84FF).withValues(alpha: 0.3)),
                   ),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(CupertinoIcons.camera_fill, color: Colors.white.withValues(alpha: 0.6), size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Upload a Photo (optional)',
-                        style: TextStyle(
-                          fontFamily: 'GoogleSansFlex',
-                          color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                      const Icon(CupertinoIcons.photo_fill, color: Color(0xFF0A84FF), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _selectedImage!.name,
+                          style: const TextStyle(
+                            fontFamily: 'GoogleSansFlex',
+                            color: Color(0xFF0A84FF),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          _selectedImage = null;
+                          _selectedImageBytes = null;
+                        }),
+                        child: const Icon(CupertinoIcons.clear_thick_circled, color: Colors.white54, size: 20),
                       ),
                     ],
                   ),
+                )
+              else
+                GestureDetector(
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    try {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(source: ImageSource.camera);
+                      if (image != null) {
+                        final bytes = await image.readAsBytes();
+                        setState(() {
+                          _selectedImage = image;
+                          _selectedImageBytes = bytes;
+                        });
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        AppNotifications.show(
+                          context: context,
+                          message: 'Error accessing camera/gallery',
+                          icon: CupertinoIcons.exclamationmark_triangle_fill,
+                          iconColor: Colors.redAccent,
+                        );
+                      }
+                    }
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(CupertinoIcons.camera_fill, color: Colors.white.withValues(alpha: 0.6), size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Upload a Photo (optional)',
+                          style: TextStyle(
+                            fontFamily: 'GoogleSansFlex',
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -519,11 +597,30 @@ class _ReportContentState extends State<ReportContent> {
       width: double.infinity,
       height: 54,
       child: ElevatedButton(
-        onPressed: _isSubmitting || _selectedIssue == null ? null : () async {
+        onPressed: _isSubmitting || _isUploadingImage || _selectedIssue == null ? null : () async {
           // === SUBMIT TO SUPABASE ===
           setState(() => _isSubmitting = true);
           
           try {
+            String? imageUrl;
+            if (_selectedImageBytes != null && _selectedImage != null) {
+              setState(() => _isUploadingImage = true);
+              final ext = _selectedImage!.name.split('.').last;
+              final fileName = '${DateTime.now().millisecondsSinceEpoch}_${const Uuid().v4()}.$ext';
+
+              await Supabase.instance.client.storage
+                  .from('report_images')
+                  .uploadBinary(
+                    fileName,
+                    _selectedImageBytes!,
+                    fileOptions: const FileOptions(upsert: true),
+                  );
+              
+              imageUrl = Supabase.instance.client.storage
+                  .from('report_images')
+                  .getPublicUrl(fileName);
+            }
+
             final insertedReport = await Supabase.instance.client.from('reports').insert({
               'issue_type': _selectedIssue,
               'name': _nameController.text.trim().isEmpty ? 'Anonymous' : _nameController.text.trim(),
@@ -532,6 +629,7 @@ class _ReportContentState extends State<ReportContent> {
               'status': 'Pending',
               'pole_id': widget.poleId,
               'user_id': Supabase.instance.client.auth.currentUser?.id,
+              if (imageUrl != null) 'image_url': imageUrl,
             }).select('id').single();
 
             // Save the report ID locally using Hive
@@ -554,20 +652,26 @@ class _ReportContentState extends State<ReportContent> {
                 icon: CupertinoIcons.check_mark_circled_solid,
                 iconColor: Colors.green,
               );
+              widget.onSuccess?.call(); // Trigger the refresh!
               widget.onClose();
             }
           } catch (e) {
+            debugPrint("Report submit error: $e");
             if (mounted) {
               AppNotifications.show(
                 context: context,
-                message: 'Error: Could not submit report.',
+                message: 'Error: ${e.toString()}',
+                // message: 'Error: Could not submit report.',
                 icon: CupertinoIcons.exclamationmark_triangle_fill,
                 iconColor: Colors.redAccent,
               );
             }
           } finally {
             if (mounted) {
-              setState(() => _isSubmitting = false);
+              setState(() {
+                _isSubmitting = false;
+                _isUploadingImage = false;
+              });
             }
           }
         },
@@ -578,7 +682,7 @@ class _ReportContentState extends State<ReportContent> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(27)),
           elevation: 0,
         ),
-        child: _isSubmitting 
+        child: _isSubmitting || _isUploadingImage
           ? const SizedBox(
               width: 24, 
               height: 24, 
