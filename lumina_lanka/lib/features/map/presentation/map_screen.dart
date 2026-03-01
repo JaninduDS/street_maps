@@ -186,7 +186,23 @@ class _MapScreenState extends ConsumerState<MapScreen> {
     HapticFeedback.mediumImpact();
 
     try {
-      // Always fetch fresh position from browser/device
+      // 1. Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        throw Exception('Location services are disabled.');
+      }
+
+      // 2. Request / Check permissions specifically for Web
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        throw Exception('Location permissions are denied.');
+      }
+
+      // 3. Fetch fresh position
       final position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
@@ -1638,31 +1654,33 @@ class _MapScreenState extends ConsumerState<MapScreen> {
         height: 54,
         child: GestureDetector(
           onTap: () {
-            HapticFeedback.lightImpact();
-            if (mounted) {
-              if (isExpanded) {
-                // Second tap: open pole info and collapse
-                setState(() {
-                  _selectedPole = {
-                    'id': fullId,
-                    'status': status,
-                    'latitude': lat,
-                    'longitude': lng,
-                  };
-                  _isSearchWardsOpen = false;
-                  _expandedPoleId = null;
-                });
-                _mapController.move(LatLng(lat, lng), 18.0);
-              } else {
-                // First tap: expand to show status
-                setState(() {
-                  _expandedPoleId = fullId;
-                });
-                _mapController.move(LatLng(lat, lng), _mapController.camera.zoom);
-              }
+          HapticFeedback.lightImpact();
+          if (mounted) {
+            if (isExpanded) {
+              // If already expanded, tap again to collapse
+              setState(() {
+                _expandedPoleId = null;
+                if (_selectedPole?['id'] == fullId) {
+                  _selectedPole = null; // Close side panel if it's the currently selected pole
+                }
+              });
+            } else {
+              // Single tap: Expand marker AND open pole info sidebar
+              setState(() {
+                _expandedPoleId = fullId;
+                _selectedPole = {
+                  'id': fullId,
+                  'status': status,
+                  'latitude': lat,
+                  'longitude': lng,
+                };
+                _isSearchWardsOpen = false;
+              });
+              _mapController.move(LatLng(lat, lng), 18.0); // Center and zoom in
             }
-          },
-          child: AnimatedContainer(
+          }
+        },
+        child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
             padding: EdgeInsets.symmetric(
@@ -1671,7 +1689,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             ),
             decoration: BoxDecoration(
               color: const Color(0xFF202020).withOpacity(0.95), // Original Dark, sleek box
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(100), // Perfect circle pill shape
               border: Border.all(
                 color: Colors.white.withOpacity(0.08),
                 width: 1,

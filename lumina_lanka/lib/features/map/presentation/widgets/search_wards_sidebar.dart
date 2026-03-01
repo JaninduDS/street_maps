@@ -307,46 +307,56 @@ class _SearchWardsSidebarState extends State<SearchWardsSidebar> {
   }
 
   Widget _buildSearchBar() {
-    return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E1E1E),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
-          width: 1.5,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(CupertinoIcons.search, color: Colors.white.withValues(alpha: 0.6), size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              focusNode: _searchFocusNode,
-              style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
-              decoration: InputDecoration(
-                hintText: 'Search places...',
-                hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withValues(alpha: 0.5), fontSize: 16),
-                border: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.only(bottom: 2),
-              ),
-              onChanged: _onSearchChanged,
-              textInputAction: TextInputAction.search,
+    return AnimatedBuilder(
+      animation: _searchFocusNode,
+      builder: (context, child) {
+        final bool isFocused = _searchFocusNode.hasFocus;
+        return Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF232323),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isFocused ? const Color(0xFF0A84FF) : Colors.transparent,
+              width: 1.5,
             ),
           ),
-          if (_searchController.text.isNotEmpty)
-            GestureDetector(
-              onTap: _clearSearch,
-              child: const Icon(CupertinoIcons.clear_thick_circled, color: Colors.white54, size: 16),
-            ),
-        ],
-      ),
+          child: Row(
+            children: [
+              Icon(CupertinoIcons.search, color: Colors.white.withOpacity(0.4), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  cursorColor: const Color(0xFF0A84FF),
+                  style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: 'Search...',
+                    hintStyle: TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white.withOpacity(0.4), fontSize: 16),
+                    border: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    isDense: true,
+                    filled: true,
+                    fillColor: Colors.transparent,
+                    hoverColor: Colors.transparent,
+                    contentPadding: const EdgeInsets.fromLTRB(2, 12, 0, 12), // Align text closer to icon and center vertically
+                  ),
+                  onChanged: _onSearchChanged,
+                  textInputAction: TextInputAction.search,
+                ),
+              ),
+              if (_searchController.text.isNotEmpty)
+                GestureDetector(
+                  onTap: _clearSearch,
+                  child: Icon(CupertinoIcons.xmark_circle_fill, color: Colors.white.withOpacity(0.4), size: 18),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
