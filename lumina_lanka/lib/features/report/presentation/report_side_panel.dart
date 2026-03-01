@@ -11,16 +11,18 @@ import '../../../core/utils/app_notifications.dart';
 
 class ReportSidePanel extends StatefulWidget {
   final bool isOpen;
-  final VoidCallback onClose;
   final double? leftPosition;
   final String? poleId;
+  final VoidCallback onClose;
+  final VoidCallback? onSuccess; // new callback
 
   const ReportSidePanel({
     super.key,
     required this.isOpen,
-    required this.onClose,
     this.leftPosition,
     this.poleId,
+    required this.onClose,
+    this.onSuccess,
   });
 
   @override
@@ -130,7 +132,11 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
                     ),
                     const SizedBox(height: 24),
                     // Report Content (inline, not nested widget)
-                    ReportContent(onClose: widget.onClose, poleId: widget.poleId),
+                    ReportContent(
+                      onClose: widget.onClose,
+                      poleId: widget.poleId,
+                      onSuccess: widget.onSuccess,
+                    ),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -146,8 +152,14 @@ class _ReportSidePanelState extends State<ReportSidePanel> {
 class ReportContent extends StatefulWidget {
   final VoidCallback onClose;
   final String? poleId;
+  final VoidCallback? onSuccess;
 
-  const ReportContent({super.key, required this.onClose, this.poleId});
+  const ReportContent({
+    super.key,
+    required this.onClose,
+    this.poleId,
+    this.onSuccess,
+  });
 
   @override
   State<ReportContent> createState() => _ReportContentState();
@@ -640,6 +652,7 @@ class _ReportContentState extends State<ReportContent> {
                 icon: CupertinoIcons.check_mark_circled_solid,
                 iconColor: Colors.green,
               );
+              widget.onSuccess?.call(); // Trigger the refresh!
               widget.onClose();
             }
           } catch (e) {
