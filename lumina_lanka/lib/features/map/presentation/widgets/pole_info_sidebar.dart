@@ -364,9 +364,7 @@ class _PoleInfoSidebarState extends ConsumerState<PoleInfoSidebar> {
                               children: [
                                 _buildDetailRow('Latitude', widget.poleData!['latitude'].toStringAsFixed(6)),
                                 _buildDivider(),
-                                _buildDetailRow('Longitude', widget.poleData!['longitude'].toStringAsFixed(6)),
-                                _buildDivider(),
-                                _buildDetailRow('Power Draw', '150W LED', isLast: true),
+                                _buildDetailRow('Longitude', widget.poleData!['longitude'].toStringAsFixed(6), isLast: true),
                               ],
                             ),
                           ),
