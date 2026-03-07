@@ -5,6 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert';
+import 'package:csv/csv.dart';
+import 'package:universal_html/html.dart' as html;
+
 import '../../../l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../shared/widgets/glass_card.dart';
@@ -114,6 +118,49 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
     }
   }
 
+  Future<void> _exportToCsv() async {
+    HapticFeedback.mediumImpact();
+    
+    // 1. Define the CSV Headers
+    List<List<dynamic>> rows = [
+      ['Report ID', 'Date', 'Issue Type', 'Status', 'Reporter Name', 'Pole ID']
+    ];
+
+    // 2. Add the data rows
+    for (var report in _recentReports) {
+      final date = DateTime.parse(report['created_at']).toLocal();
+      final formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(date);
+      
+      rows.add([
+        report['id'],
+        formattedDate,
+        report['issue_type'] ?? 'Unknown',
+        report['status'],
+        report['name'] ?? 'Anonymous',
+        report['pole_id'],
+      ]);
+    }
+
+    // 3. Convert to CSV string
+    String csv = const CsvEncoder().convert(rows);
+
+    // 4. Trigger browser download
+    final bytes = utf8.encode(csv);
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement(href: url)
+      ..setAttribute('download', 'Lumina_Reports_${DateTime.now().toIso8601String().split('T')[0]}.csv')
+      ..click();
+    html.Url.revokeObjectUrl(url);
+
+    AppNotifications.show(
+      context: context,
+      message: 'Report downloaded successfully!',
+      icon: CupertinoIcons.check_mark_circled_solid,
+      iconColor: AppColors.accentGreen,
+    );
+  }
+
   void _showAssignSheet(Map<String, dynamic> report) {
     showModalBottomSheet(
       context: context,
@@ -207,9 +254,24 @@ class _CouncilDashboardState extends State<CouncilDashboard> {
                   const SizedBox(height: 32),
 
                   // === RECENT REPORTS LIST ===
-                  Text(
-                    l10n.recentReports,
-                    style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.recentReports,
+                        style: const TextStyle(fontFamily: 'GoogleSansFlex', color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: _recentReports.isEmpty ? null : _exportToCsv,
+                        icon: const Icon(CupertinoIcons.cloud_download, size: 18, color: Colors.white),
+                        label: const Text('Export CSV', style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0A84FF),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          elevation: 0,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   GlassCard(

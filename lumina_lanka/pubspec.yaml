@@ -61,6 +61,8 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_map_marker_cluster: ^1.4.0
+  csv: ^7.2.0
+  universal_html: ^2.3.0
 
 dev_dependencies:
   flutter_test:
