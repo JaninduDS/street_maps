@@ -38,7 +38,6 @@ class UnifiedGlassSheet extends StatefulWidget {
 
 class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
   // Height state
-  double _currentHeight = 78.0;
   static const double _minHeight = 78.0;
 
   // Search state
@@ -77,7 +76,6 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
         _searchResults = [];
         if (_isSearchMode) {
           _isSearchMode = false;
-          _currentHeight = _minHeight;
           widget.onSearchModeChanged?.call(false);
         }
       });
@@ -107,7 +105,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
         // Auto-expand if we have results
         if (_searchResults.isNotEmpty) {
           final screenHeight = MediaQuery.of(context).size.height;
-          _currentHeight = screenHeight * 0.7;
+          
           _isSearchMode = true;
           widget.onSearchModeChanged?.call(true);
         }
@@ -124,7 +122,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     // Expand to show results
     setState(() {
       final screenHeight = MediaQuery.of(context).size.height;
-      _currentHeight = screenHeight * 0.7;
+      
       _isSearchMode = true;
     });
 
@@ -140,7 +138,7 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
 
     setState(() {
       _isSearchMode = false;
-      _currentHeight = _minHeight;
+      
       _searchResults = [];
       _searchController.clear();
     });
@@ -170,7 +168,6 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     if (mounted) {
       setState(() {
         _isSearchMode = false;
-        _currentHeight = _minHeight;
         _searchResults = [];
         _isSearching = false;
       });
@@ -184,87 +181,61 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-    final maxHeight = screenHeight * 0.7; // Dynamic max height
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     
-    // Use provided width or default to 75% of screen (narrower)
+    // 1. Calculate safe height so it never goes off-screen
+    final safeMaxHeight = screenHeight - keyboardHeight - 120; // 120px clearance for top buttons
+    final expandedHeight = (screenHeight * 0.65).clamp(200.0, safeMaxHeight);
+    
+    // 2. Determine actual height
+    final displayHeight = _isSearchMode ? expandedHeight : _minHeight;
+    
     final targetWidth = widget.width ?? (screenWidth * 0.75);
 
     // Dynamic border radius
-    final dynamicRadius = 50.0 - ((_currentHeight - _minHeight) / (maxHeight - _minHeight)) * 30;
+    final dynamicRadius = 50.0 - ((displayHeight - _minHeight) / (expandedHeight - _minHeight).clamp(1.0, double.infinity)) * 30;
 
-    return GestureDetector(
-      onVerticalDragUpdate: _isSearchMode ? null : (details) {
-        setState(() {
-          _currentHeight -= details.delta.dy;
-          _currentHeight = _currentHeight.clamp(_minHeight, maxHeight);
-        });
-      },
-      onVerticalDragEnd: _isSearchMode ? null : (details) {
-        setState(() {
-          if (_currentHeight > (_minHeight + maxHeight) / 2) {
-            _currentHeight = maxHeight;
-            _isSearchMode = true; // Treating manual expansion as search mode
-          } else {
-            _currentHeight = _minHeight;
-            _isSearchMode = false;
-          }
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOutCubic, // Smoother curve
-        width: targetWidth,
-        height: _currentHeight,
-        alignment: Alignment.topCenter,
-        child: Container(
-          // FLIGHTY SHADOW
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_currentHeight == _minHeight ? 40 : dynamicRadius),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.4),
-                blurRadius: 40,
-                spreadRadius: -5,
-                offset: const Offset(0, 20),
-              ),
-            ],
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      width: targetWidth,
+      height: displayHeight,
+      alignment: Alignment.topCenter,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(displayHeight == _minHeight ? 40 : dynamicRadius.clamp(20.0, 40.0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.4),
+              blurRadius: 40,
+              spreadRadius: -5,
+              offset: const Offset(0, 20),
+            ),
+          ],
+        ),
+        child: GlassmorphicContainer(
+          width: targetWidth,
+          height: displayHeight,
+          borderRadius: displayHeight == _minHeight ? 40 : dynamicRadius.clamp(20.0, 40.0),
+          blur: 45, 
+          alignment: Alignment.topCenter, 
+          border: 1.0,
+          linearGradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark 
+              ? [const Color(0xFF1C1C1E).withOpacity(0.75), const Color(0xFF121212).withOpacity(0.65)]
+              : [Colors.white.withOpacity(0.90), Colors.white.withOpacity(0.80)],
           ),
-          child: GlassmorphicContainer(
-            width: targetWidth,
-            height: _currentHeight,
-            borderRadius: _currentHeight == _minHeight ? 40 : dynamicRadius, // 40px for extreme squircle
-            blur: 45, // Massive blur for Flighty vibrancy
-            alignment: Alignment.topCenter,
-            border: 1.0, // Thinner, sleeker border
-            linearGradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark 
-                ? [
-                    const Color(0xFF1C1C1E).withOpacity(0.75), // Darker, richer glass
-                    const Color(0xFF121212).withOpacity(0.65),
-                  ]
-                : [
-                    Colors.white.withOpacity(0.90),
-                    Colors.white.withOpacity(0.80),
-                  ],
-            ),
-            borderGradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                ? [
-                    Colors.white.withOpacity(0.25), // Brighter top edge to catch light
-                    Colors.white.withOpacity(0.05),
-                  ]
-                : [
-                    Colors.black.withOpacity(0.15),
-                    Colors.black.withOpacity(0.02),
-                  ],
-            ),
-            child: Column(
+          borderGradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+              ? [Colors.white.withOpacity(0.25), Colors.white.withOpacity(0.05)]
+              : [Colors.black.withOpacity(0.15), Colors.black.withOpacity(0.02)],
+          ),
+          child: Column(
             children: [
-              // === FLIGHTY DRAG HANDLE ===
               const SizedBox(height: 8),
               Container(
                 width: 40,
@@ -276,19 +247,16 @@ class _UnifiedGlassSheetState extends State<UnifiedGlassSheet> {
               ),
               const SizedBox(height: 12),
 
-              // Search Bar
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildEditableSearchBar(),
               ),
 
-              // Search Results
-              if (_currentHeight > _minHeight + 20)
+              if (displayHeight > _minHeight + 20)
                 Expanded(
                   child: _buildSearchResults(isDark),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
       ),

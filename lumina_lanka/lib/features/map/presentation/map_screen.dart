@@ -622,7 +622,7 @@ class _MapScreenState extends ConsumerState<MapScreen> {
             Positioned(
               top: MediaQuery.of(context).padding.top + 16,
               right: 80, // Offset to the left of the buttons
-              left: 16,
+              left: 80,
               child: Align(
                 alignment: Alignment.topRight,
                 child: AnimatedOpacity(

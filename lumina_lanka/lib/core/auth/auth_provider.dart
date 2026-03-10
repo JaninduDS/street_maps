@@ -25,14 +25,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   final _supabase = Supabase.instance.client;
+  int _authEventCounter = 0; // <-- Tracks events to prevent race conditions
 
   void _init() {
     // Listen to Auth changes
     _supabase.auth.onAuthStateChange.listen((data) async {
+      _authEventCounter++; // Increment on every new auth event
+      final currentEventId = _authEventCounter; 
+      
       final user = data.session?.user;
+      
       if (user != null) {
         final role = await _fetchUserRole(user.id);
-        state = AuthState(user: user, role: role, isLoading: false);
+        
+        // CRITICAL FIX: Only update the state if a newer auth event (like a sign out) 
+        // hasn't happened while we were waiting for the role to fetch.
+        if (currentEventId == _authEventCounter && _supabase.auth.currentUser != null) {
+          state = AuthState(user: user, role: role, isLoading: false);
+        }
       } else {
         state = AuthState(user: null, role: AppRole.public, isLoading: false);
       }
